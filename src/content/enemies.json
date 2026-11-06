@@ -1,0 +1,13 @@
+[
+  { "id": "mire-skulker", "name": "Mire Skulker", "hp": 6, "behaviors": [
+    { "name": "Dart In", "initiative": 15, "effects": [{ "kind": "move", "range": 3 }, { "kind": "attack", "damage": 1, "range": 1 }] },
+    { "name": "Press", "initiative": 45, "effects": [{ "kind": "move", "range": 2 }, { "kind": "attack", "damage": 2, "range": 1 }] },
+    { "name": "Rending Bite", "initiative": 60, "effects": [{ "kind": "move", "range": 1 }, { "kind": "attack", "damage": 2, "range": 1, "conditions": ["bleed"] }] },
+    { "name": "Lunge", "initiative": 75, "effects": [{ "kind": "move", "range": 2 }, { "kind": "attack", "damage": 3, "range": 1 }] }
+  ] },
+  { "id": "hollow-archer", "name": "Hollow Archer", "hp": 5, "behaviors": [
+    { "name": "Snap Shot", "initiative": 30, "effects": [{ "kind": "attack", "damage": 2, "range": 4 }] },
+    { "name": "Reposition", "initiative": 55, "effects": [{ "kind": "move", "range": 2 }, { "kind": "attack", "damage": 1, "range": 5 }] },
+    { "name": "Aimed Shot", "initiative": 80, "effects": [{ "kind": "move", "range": 1 }, { "kind": "attack", "damage": 3, "range": 5 }] }
+  ] }
+]

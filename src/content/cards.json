@@ -1,0 +1,22 @@
+[
+  { "id": "hasty-step", "name": "Hasty Step", "initiative": 8, "staminaCost": 1,
+    "effects": [{ "kind": "move", "range": 4 }] },
+  { "id": "guarded-stance", "name": "Guarded Stance", "initiative": 5, "staminaCost": 1,
+    "effects": [{ "kind": "shield", "amount": 3 }] },
+  { "id": "hamstring", "name": "Hamstring", "initiative": 20, "staminaCost": 2,
+    "effects": [{ "kind": "attack", "damage": 2, "range": 1, "conditions": ["root"] }, { "kind": "move", "range": 2 }] },
+  { "id": "shoulder-charge", "name": "Shoulder Charge", "initiative": 25, "staminaCost": 2,
+    "effects": [{ "kind": "move", "range": 2 }, { "kind": "attack", "damage": 2, "range": 1, "push": 2 }] },
+  { "id": "flung-stone", "name": "Flung Stone", "initiative": 30, "staminaCost": 1,
+    "effects": [{ "kind": "attack", "damage": 2, "range": 3 }] },
+  { "id": "cinder-dart", "name": "Cinder Dart", "initiative": 35, "staminaCost": 2,
+    "effects": [{ "kind": "attack", "damage": 2, "range": 4, "conditions": ["bleed"] }] },
+  { "id": "wide-cleave", "name": "Wide Cleave", "initiative": 40, "staminaCost": 2,
+    "effects": [{ "kind": "move", "range": 1 }, { "kind": "attack", "damage": 3, "range": 1, "allAdjacent": true }] },
+  { "id": "ringing-blow", "name": "Ringing Blow", "initiative": 50, "staminaCost": 3,
+    "effects": [{ "kind": "attack", "damage": 3, "range": 1, "conditions": ["stun"] }] },
+  { "id": "heavy-swing", "name": "Heavy Swing", "initiative": 65, "staminaCost": 3,
+    "effects": [{ "kind": "move", "range": 1 }, { "kind": "attack", "damage": 6, "range": 1 }] },
+  { "id": "field-salve", "name": "Field Salve", "initiative": 70, "staminaCost": 2,
+    "effects": [{ "kind": "heal", "amount": 5 }] }
+]

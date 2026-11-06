@@ -48,16 +48,18 @@ Effects on a card are optional and resolve in the order printed.
 
 | Action | Effect | Status |
 |---|---|---|
-| Move | Move 1 | Built, as Struggle: Move |
-| Attack | Melee attack for 1 | Built, as Struggle: Attack |
-| Catch Breath | Recover stamina and mana | Built, stamina only (+2) |
-| Spark (placeholder name) | Weak ranged spell | Planned |
+| Move | Move 1 | Built |
+| Attack | Melee attack for 2 | Built |
+| Spark (placeholder name) | Ranged attack for 1, range 3 | Built |
+| Catch Breath | +2 stamina, +2 mana | Built |
+
+Attack does more than Spark so that closing to melee is still worth it.
 
 **Attack modifier deck (Built)**
 - Contents: six +0, five +1, five -1, one +2, one -2, one x2 and one null.
 - Drawing x2 or null reshuffles the deck after that attack.
 - The player and enemies have separate decks.
-- Spell attacks draw from it too (Planned).
+- Spell attacks draw from it too.
 
 **Conditions (Built)**
 - **Bleed:** 1 damage at the start of each turn until healed.
@@ -84,10 +86,12 @@ Effects on a card are optional and resolve in the order printed.
 | Pool | Pays for | Start | Status |
 |---|---|---|---|
 | Health | Staying alive | 20 | Built |
-| Stamina | Physical cards | 20 | Built, without regen |
-| Mana | Spell cards | To be tuned | Planned |
+| Stamina | Physical cards | 20 | Built |
+| Mana | Spell cards | 10 | Built |
 
-**Regen (Planned):** stamina and mana both regenerate slowly, during combat rounds and while walking. This keeps a hand full of spells from being dead for long. Rates will be tuned in playtesting.
+**Regen:** stamina and mana both regenerate slowly, which keeps a hand full of spells from being dead for long.
+- During combat, each pool gains 1 per round, starting with round 2 (Built).
+- While walking (Planned, with the world). Rates will be tuned in playtesting.
 
 **Recovery**
 - A rest fully refills all pools (Planned).
@@ -97,11 +101,14 @@ Effects on a card are optional and resolve in the order printed.
 
 ## Cards
 
-**Physical cards (Built):** each has its own printed initiative, stamina cost and effects. The starter deck has 10 cards, and decks hold 10-20.
+**Physical cards (Built):** each has its own printed initiative, stamina cost and effects. Decks hold 10-20 cards, and the test deck has 14.
 
-**Spell cards (Planned)**
-- They cost mana instead of stamina.
-- They do things physical cards can't: area blasts, long range, blink movement, elemental damage and barriers on the map.
+**Spell cards**
+- They cost mana instead of stamina (Built).
+- They do things physical cards can't. Built: area blasts, long range and blink movement. Planned: elemental damage and barriers on the map.
+- **Blast:** also hits enemies near the target, if the target has line of sight to them.
+- **Blink:** teleports to a tile within range and in sight. It crosses water and figures, works while rooted, and still springs a trap you land on.
+- The test deck has 4 spells: Slipstep, Daze, Frost Lance and Firebloom.
 
 **Rolled properties (Planned)**
 - Cards drop with bonus properties, rolled once at drop time, so two copies are rarely identical.
@@ -137,7 +144,7 @@ Effects on a card are optional and resolve in the order printed.
 - **Diagonal adjacency:** the current rule is orthogonal-only, but the expectation from Ultima and Tunnels of Doom is that diagonals are adjacent. Switching would need a rebalance, since all-adjacent attacks could reach 8 enemies.
 - **Hidden enemy plans:** does committing blind feel fair?
 - **Modifier swing:** do x2 and null add tension, or undo good positioning?
-- **Regen rates and pool sizes**, including starting mana and how much a level adds to a pool.
+- **Regen rates and pool sizes**, including how much a level adds to a pool. With regen, stamina may be too plentiful within a single fight.
 - **Post-fight recovery:** does the 25% stamina recovery still earn its place now that walking regens stamina? If it stays, should it cover mana too?
 
 **To design later**

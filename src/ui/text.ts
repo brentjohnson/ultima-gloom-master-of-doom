@@ -3,12 +3,15 @@ import type { Effect, GameEvent, Modifier } from '../engine';
 export function describeEffect(effect: Effect): string {
   switch (effect.kind) {
     case 'move': return `Move ${effect.range}`;
+    case 'blink': return `Blink ${effect.range} in sight`;
+    case 'restore': return `+${effect.stamina} stamina, +${effect.mana} mana`;
     case 'heal': return `Heal ${effect.amount}, cure bleed`;
     case 'shield': return `Shield ${effect.amount} this round`;
     case 'attack': {
       const parts = [`Attack ${effect.damage}`];
       if (effect.allAdjacent) parts.push('all adjacent');
       else if (effect.range > 1) parts.push(`range ${effect.range}`);
+      if (effect.blast) parts.push(`blast ${effect.blast}`);
       if (effect.push) parts.push(`push ${effect.push}`);
       for (const c of effect.conditions ?? []) parts.push(c);
       return parts.join(', ');
@@ -41,9 +44,13 @@ export function logLine(event: GameEvent, nameOf: (id: string) => string): strin
     case 'healed': return `${subject(nameOf(event.figureId), 'heal', 'heals')} ${event.amount}.`;
     case 'shielded': return `${subject(nameOf(event.figureId), 'gain', 'gains')} shield ${event.amount}.`;
     case 'defeated': return event.name === YOU ? 'You are defeated.' : `${event.name} is defeated.`;
+    case 'resourceChanged':
+      if (event.source === 'restore') return `You recover ${event.delta} ${event.resource}.`;
+      if (event.source === 'recovery') return `You catch your breath after the fight: +${event.delta} ${event.resource}.`;
+      return null;
     case 'modifierDeckShuffled': return `${event.owner === 'player' ? 'Your' : 'The enemy'} modifier deck is reshuffled.`;
     case 'effectSkipped':
-      if (event.chosen) return event.kind === 'move' ? 'You stay put.' : `You skip the ${event.kind}.`;
+      if (event.chosen) return event.kind === 'move' || event.kind === 'blink' ? 'You stay put.' : `You skip the ${event.kind}.`;
       return `No legal ${event.kind}, so it is skipped.`;
     case 'combatEnded': return event.outcome === 'won' ? 'Victory!' : event.outcome === 'fled' ? 'You escape.' : 'You have fallen.';
     default: return null;

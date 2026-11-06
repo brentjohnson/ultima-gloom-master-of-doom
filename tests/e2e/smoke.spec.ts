@@ -109,3 +109,39 @@ test('a fight can be played with real clicks through to an outcome', async ({ pa
   await expect(page.locator('.layout')).toHaveAttribute('data-round', '1');
   expect(errors).toEqual([]);
 });
+
+test('spell cards spend mana, and the UI blocks them when mana runs out', async ({ page }) => {
+  for (let seed = 1; ; seed++) {
+    expect(seed).toBeLessThan(100);
+    await page.goto(`/?seed=${seed}`);
+    await expect(page.locator('.card')).toHaveCount(5);
+    if (await page.locator('[data-card="slipstep"]').count()) break;
+  }
+  await expect(page.locator('.arena canvas')).toBeVisible();
+  await expect(page.locator('[data-stat="mana"]')).toContainText('10/10');
+  await expect(page.locator('[data-card="slipstep"]')).toContainText('2 mana');
+  await expect(page.locator('[data-basic="spark"]')).toContainText('Attack 1, range 3');
+  await expect(page.locator('[data-basic="catchBreath"]')).toContainText('+2 stamina, +2 mana');
+
+  await page.locator('[data-card="slipstep"]').click();
+  await idle(page);
+  await expect(page.locator('[data-stat="mana"]')).toContainText('8/10');
+  // The player starts at (1,4); blink three tiles down the open column.
+  await clickTile(page, 1, 7);
+  await page.waitForTimeout(50);
+  await idle(page);
+  const pos = await page.evaluate(() => (window as unknown as { __game: GameController }).__game.player.pos);
+  expect(pos).toEqual({ x: 1, y: 7 });
+  await expect(page.locator('.layout')).toHaveAttribute('data-round', '2');
+  await expect(page.locator('[data-stat="mana"]')).toContainText('9/10');
+  await page.screenshot({ path: 'test-results/spells.png' });
+
+  // With no mana left, spell cards in hand are disabled while physical cards still work.
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: GameController }).__game;
+    g.snapshot.state.player.mana = 0;
+    (g as unknown as { update(patch: object): void }).update({});
+  });
+  await expect(page.locator('.card.mana:not(:disabled)')).toHaveCount(0);
+  await expect(page.locator('.card.stamina:not(:disabled)').first()).toBeVisible();
+});

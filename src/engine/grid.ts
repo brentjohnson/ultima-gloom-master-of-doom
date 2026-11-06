@@ -81,6 +81,18 @@ export function reachableTiles(state: CombatState, from: Pos, range: number): Po
   return floodDistances(state, from, range, false).queue.filter((p) => !samePos(p, from));
 }
 
+/** Tiles a blink can land on: standable, in range and in sight. */
+export function blinkTargets(state: CombatState, from: Pos, range: number): Pos[] {
+  const targets: Pos[] = [];
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      const p = { x, y };
+      if (!samePos(p, from) && distance(p, from) <= range && isStandable(state, p) && hasLineOfSight(state, from, p)) targets.push(p);
+    }
+  }
+  return targets;
+}
+
 /**
  * Enemy pathing: the path to the nearest tile from which `target` can be
  * attacked at `attackRange`, truncated to `moveRange`. Enemies avoid traps.

@@ -1,0 +1,45 @@
+{
+  "move": {
+    "name": "Move",
+    "initiative": 90,
+    "effects": [
+      {
+        "kind": "move",
+        "range": 1
+      }
+    ]
+  },
+  "attack": {
+    "name": "Attack",
+    "initiative": 90,
+    "effects": [
+      {
+        "kind": "attack",
+        "damage": 2,
+        "range": 1
+      }
+    ]
+  },
+  "spark": {
+    "name": "Spark",
+    "initiative": 90,
+    "effects": [
+      {
+        "kind": "attack",
+        "damage": 1,
+        "range": 3
+      }
+    ]
+  },
+  "catchBreath": {
+    "name": "Catch Breath",
+    "initiative": 90,
+    "effects": [
+      {
+        "kind": "restore",
+        "stamina": 2,
+        "mana": 2
+      }
+    ]
+  }
+}

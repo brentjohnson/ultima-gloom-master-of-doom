@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { currentEffect, getPlayer, isOnExit, livingEnemies } from '../engine';
-import type { BasicAction, CardInstance, CombatState, Figure } from '../engine';
+import type { BasicId, CardInstance, CombatState, Figure } from '../engine';
 import type { GameController } from '../app/game';
 import { describeEffect } from './text';
 
@@ -22,10 +22,12 @@ function Bar({ label, value, max, kind }: { label: string; value: number; max: n
 
 function CardView({ card, enabled, onPlay }: { card: CardInstance; enabled: boolean; onPlay: () => void }) {
   return (
-    <button class="card" disabled={!enabled} onClick={onPlay} data-card={card.id}>
+    <button class={`card ${card.costType}`} disabled={!enabled} onClick={onPlay} data-card={card.id}>
       <span class="card-top">
         <span class="init" title="Initiative: lowest acts first">{card.initiative}</span>
-        <span class="cost" title="Stamina cost">{card.staminaCost} st</span>
+        <span class={`cost ${card.costType}`} title={`${card.costType === 'mana' ? 'Mana' : 'Stamina'} cost`}>
+          {card.cost} {card.costType === 'mana' ? 'mana' : 'st'}
+        </span>
       </span>
       <span class="card-name">{card.name}</span>
       <span class="card-text">
@@ -35,25 +37,21 @@ function CardView({ card, enabled, onPlay }: { card: CardInstance; enabled: bool
   );
 }
 
-const BASICS: { id: BasicAction; name: string; text: string }[] = [
-  { id: 'struggleMove', name: 'Struggle: Move', text: 'Move 1' },
-  { id: 'struggleAttack', name: 'Struggle: Attack', text: 'Attack 1' },
-  { id: 'catchBreath', name: 'Catch Breath', text: '+2 stamina' },
-];
+const BASIC_ORDER: BasicId[] = ['move', 'attack', 'spark', 'catchBreath'];
 
 function promptFor(state: CombatState, busy: boolean): string {
   if (busy) return 'Resolving...';
   if (state.phase.kind === 'planning') return 'Choose one card or basic action. Enemy plans are hidden until you commit.';
   if (state.phase.kind === 'ended') return '';
   const effect = currentEffect(state);
-  if (effect?.kind === 'move') return `${describeEffect(effect)}: click a green tile, or click yourself to stay put.`;
+  if (effect?.kind === 'move' || effect?.kind === 'blink') return `${describeEffect(effect)}: click a green tile, or click yourself to stay put.`;
   if (effect?.kind === 'attack') return `${describeEffect(effect)}: click a red target, or skip the attack.`;
   return 'You are on an exit: flee, or end your turn.';
 }
 
 function skipLabel(state: CombatState): string {
   const kind = currentEffect(state)?.kind;
-  if (kind === 'move') return 'Stay put';
+  if (kind === 'move' || kind === 'blink') return 'Stay put';
   if (kind === 'attack') return 'Skip attack';
   return 'End turn';
 }
@@ -105,7 +103,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
             <div class="overlay" data-testid="outcome">
               <h2>{OUTCOME_TEXT[state.phase.outcome]}</h2>
               <p>
-                Round {state.round}: {player.hp}/{player.maxHp} HP, {state.player.stamina}/{state.player.maxStamina} stamina
+                Round {state.round}: {player.hp}/{player.maxHp} HP, {state.player.stamina}/{state.player.maxStamina} stamina, {state.player.mana}/{state.player.maxMana} mana
                 {state.phase.outcome === 'won' ? ' (after recovery)' : ''}.
               </p>
               <button class="primary" onClick={() => game.newFight((Math.random() * 2 ** 31) | 0)}>New fight</button>
@@ -129,11 +127,16 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
             );
           })}
           <div class="basics">
-            {BASICS.map((b) => (
-              <button key={b.id} class="basic" disabled={!planning} data-basic={b.id} onClick={() => void game.dispatch({ type: 'useBasic', basic: b.id })}>
-                <strong>{b.name}</strong> <span>{b.text}, init {state.rules.basicInitiative}</span>
-              </button>
-            ))}
+            {BASIC_ORDER.map((id) => {
+              const basic = state.basics[id];
+              return (
+                <button key={id} class="basic" disabled={!planning} data-basic={id} onClick={() => void game.dispatch({ type: 'useBasic', basic: id })}>
+                  <strong>{basic.name}</strong>
+                  <span>{basic.effects.map(describeEffect).join('; ')}</span>
+                  <span>Free, init {basic.initiative}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -143,6 +146,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         <div class="round">Round {state.round} <span class="seed">seed {seed}</span></div>
         <Bar label="HP" value={player.hp} max={player.maxHp} kind="hp" />
         <Bar label="Stamina" value={state.player.stamina} max={state.player.maxStamina} kind="stamina" />
+        <Bar label="Mana" value={state.player.mana} max={state.player.maxMana} kind="mana" />
         <div class="status">
           {player.shield > 0 && <span>Shield {player.shield}</span>}
           {player.conditions.length > 0 && <span class="conditions">{player.conditions.join(', ')}</span>}
@@ -150,6 +154,8 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         <div class="piles">
           Deck {state.player.deck.length}, discard {state.player.discard.length}, modifiers {modifiers.draw.length} left
         </div>
+
+        <p class="rule-note">Only up, down, left and right count as adjacent. A diagonal square is range 2. Each round you regain {state.rules.staminaRegenPerRound} stamina and {state.rules.manaRegenPerRound} mana.</p>
 
         <h2>Turn order</h2>
         {state.turnOrder.length === 0

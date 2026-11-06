@@ -61,11 +61,31 @@ describe('stamina', () => {
     expect(() => applyAction(state, { type: 'playCard', cardId: id })).toThrow(IllegalActionError);
   });
 
-  it('keeps basic actions free, and Catch Breath recovers stamina', () => {
-    const { state } = setup(['@......d'], fullDeck(), [dummy, biter], 3, 0);
+  it('keeps basic actions free, and Catch Breath restores both pools', () => {
+    const { state } = setup(['@......d'], fullDeck(), [dummy, biter], 3, 0, 0);
     const { state: next, events } = step(state, { type: 'useBasic', basic: 'catchBreath' });
-    expect(next.player.stamina).toBe(2);
-    expect(events).toContainEqual({ type: 'staminaChanged', delta: 2, stamina: 2 });
+    expect(events).toContainEqual({ type: 'resourceChanged', resource: 'stamina', delta: 2, value: 2, source: 'restore' });
+    expect(events).toContainEqual({ type: 'resourceChanged', resource: 'mana', delta: 2, value: 2, source: 'restore' });
+    // Plus 1 of each from regen as the next round starts.
+    expect(next.player.stamina).toBe(3);
+    expect(next.player.mana).toBe(3);
+  });
+
+  it('regenerates a little each round, up to the maximum', () => {
+    const { state } = setup(['@......d'], fullDeck(), [dummy, biter], 3, 19, 10);
+    const move = step(state, { type: 'useBasic', basic: 'move' }).state;
+    const { state: next } = step(move, { type: 'move', to: { x: 1, y: 0 } });
+    expect(next.round).toBe(2);
+    expect(next.player.stamina).toBe(20);
+    expect(next.player.mana).toBe(10);
+    const again = step(step(next, { type: 'useBasic', basic: 'move' }).state, { type: 'move', to: { x: 2, y: 0 } }).state;
+    expect(again.player.stamina).toBe(20);
+  });
+
+  it('does not regenerate before the first round', () => {
+    const { state } = setup(['@......d'], fullDeck(), [dummy, biter], 3, 5, 5);
+    expect(state.player.stamina).toBe(5);
+    expect(state.player.mana).toBe(5);
   });
 
   it('recovers a quarter of max after a win but nothing after fleeing', () => {
@@ -189,6 +209,64 @@ describe('conditions, shields and terrain', () => {
     const across = step(committed, { type: 'move', to: { x: 2, y: 0 } });
     expect(across.events.some((e) => e.type === 'trapSprung')).toBe(true);
     expect(getPlayer(across.state).hp).toBe(18);
+  });
+});
+
+describe('spells', () => {
+  const spell = (id: string, initiative: number, cost: number, effects: Parameters<typeof card>[3]) =>
+    card(id, initiative, cost, effects, 'mana');
+
+  it('charges mana, not stamina, and refuses a spell without enough mana', () => {
+    const bolt = spell('bolt', 20, 3, [{ kind: 'attack', damage: 2, range: 3 }]);
+    const start = withHand(['@.d'], fullDeck(bolt, step3));
+    const { state } = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'bolt') });
+    expect(state.player.mana).toBe(7);
+    expect(state.player.stamina).toBe(20);
+
+    const broke = JSON.parse(JSON.stringify(start)) as typeof start;
+    broke.player.mana = 2;
+    expect(canPlayCard(broke, cardIdNamed(broke, 'bolt'))).toBe(false);
+    expect(() => applyAction(broke, { type: 'playCard', cardId: cardIdNamed(broke, 'bolt') })).toThrow(IllegalActionError);
+    expect(canPlayCard(broke, cardIdNamed(broke, 'step3'))).toBe(true);
+  });
+
+  it('blast hits enemies around the target, but not behind a wall', () => {
+    const bloom = spell('bloom', 1, 1, [{ kind: 'attack', damage: 1, range: 9, blast: 2 }]);
+    const start = withHand(['@....dd#d', '.....d...'], fullDeck(bloom, step3));
+    const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'bloom') }).state;
+    const { events } = step(committed, { type: 'attack', targetId: 'e1' });
+    const hit = events.flatMap((e) => (e.type === 'attacked' ? [e.targetId] : []));
+    expect(hit.sort()).toEqual(['e0', 'e1', 'e3']);
+  });
+
+  it('blink crosses water and figures, works while rooted, and needs sight', () => {
+    const hop = spell('hop', 1, 1, [{ kind: 'blink', range: 3 }]);
+    const start = withHand(['@~d.', '#...', '....'], fullDeck(hop, step3));
+    start.figures[0]?.conditions.push('root');
+    const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'hop') }).state;
+    const targets = legalMoveTargets(committed);
+    expect(targets).toContainEqual({ x: 3, y: 0 });
+    expect(targets).not.toContainEqual({ x: 1, y: 0 }); // Water.
+    expect(targets).not.toContainEqual({ x: 2, y: 0 }); // Occupied.
+    expect(targets).not.toContainEqual({ x: 0, y: 2 }); // Behind the wall.
+    const { state, events } = step(committed, { type: 'move', to: { x: 3, y: 0 } });
+    expect(getPlayer(state).pos).toEqual({ x: 3, y: 0 });
+    expect(events).toContainEqual({ type: 'blinked', figureId: 'player', path: [{ x: 3, y: 0 }] });
+  });
+
+  it('blinking onto a trap still springs it', () => {
+    const hop = spell('hop', 1, 1, [{ kind: 'blink', range: 3 }]);
+    const start = withHand(['@.^...d'], fullDeck(hop, step3));
+    const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'hop') }).state;
+    const { state } = step(committed, { type: 'move', to: { x: 2, y: 0 } });
+    expect(getPlayer(state).hp).toBe(18);
+  });
+
+  it('Spark reaches past melee, and the basic actions come from data', () => {
+    const start = rigModifier(withHand(['@..d'], fullDeck(step3, strike)), 'player', { kind: 'add', value: 0 });
+    const committed = step(start, { type: 'useBasic', basic: 'spark' }).state;
+    const { events } = step(committed, { type: 'attack', targetId: 'e0' });
+    expect(events.find((e) => e.type === 'attacked')).toMatchObject({ base: 1, total: 1 });
   });
 });
 

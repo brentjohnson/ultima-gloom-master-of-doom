@@ -1,4 +1,5 @@
-import { applyAction, createCombat, legalAttackTargets, legalMoveTargets, currentEffect, parseArena } from '../src/engine';
+import { BASICS } from '../src/content';
+import { applyAction, canPlayCard, createCombat, legalAttackTargets, legalMoveTargets, currentEffect, parseArena } from '../src/engine';
 import type { Action, AttackEffect, CardDef, CombatState, EnemyDef, GameEvent, Modifier } from '../src/engine';
 
 export const dummy: EnemyDef = {
@@ -10,14 +11,15 @@ export const biter: EnemyDef = {
   behaviors: [{ name: 'Bite', initiative: 10, effects: [{ kind: 'move', range: 3 }, { kind: 'attack', damage: 2, range: 1 }] }],
 };
 
-export const card = (id: string, initiative: number, staminaCost: number, effects: CardDef['effects']): CardDef =>
-  ({ id, name: id, initiative, staminaCost, effects });
+export const card = (
+  id: string, initiative: number, cost: number, effects: CardDef['effects'], costType: CardDef['costType'] = 'stamina',
+): CardDef => ({ id, name: id, initiative, cost, costType, effects });
 
-export function setup(rows: string[], deck: CardDef[], enemyDefs: EnemyDef[] = [dummy, biter], seed = 1, stamina = 20) {
+export function setup(rows: string[], deck: CardDef[], enemyDefs: EnemyDef[] = [dummy, biter], seed = 1, stamina = 20, mana = 10) {
   return createCombat({
-    seed, deck, enemyDefs,
+    seed, deck, enemyDefs, basics: BASICS,
     arena: parseArena(rows, { d: 'dummy', b: 'biter' }),
-    player: { hp: 20, maxHp: 20, stamina, maxStamina: 20 },
+    player: { hp: 20, maxHp: 20, stamina, maxStamina: 20, mana, maxMana: 10 },
   });
 }
 
@@ -48,13 +50,13 @@ export function botAction(state: CombatState): Action {
   if (state.phase.kind === 'planning') {
     const playable = state.player.hand
       .map((id) => state.cards[id])
-      .filter((c): c is NonNullable<typeof c> => !!c && c.staminaCost <= state.player.stamina);
+      .filter((c): c is NonNullable<typeof c> => !!c && canPlayCard(state, c.instanceId));
     const nearest = Math.min(...enemies.map((e) => dist(e.pos, player.pos)));
     const score = (c: CombatState['cards'][string]): number => {
       let total = 0;
       let reach = 0;
       for (const effect of c.effects) {
-        if (effect.kind === 'move') reach += effect.range;
+        if (effect.kind === 'move' || effect.kind === 'blink') reach += effect.range;
         if (effect.kind === 'attack') {
           total += (nearest <= effect.range + reach ? effect.damage + 2 : 0) + (effect.conditions?.length ?? 0);
         }
@@ -62,12 +64,13 @@ export function botAction(state: CombatState): Action {
         if (effect.kind === 'shield') total += 1;
         if (effect.kind === 'move' && nearest > 1) total += 1;
       }
-      return total - c.staminaCost * 0.4;
+      return total - c.cost * 0.4;
     };
     const best = playable.sort((a, b) => score(b) - score(a))[0];
     if (best && score(best) > 0) return { type: 'playCard', cardId: best.instanceId };
-    if (nearest <= 1) return { type: 'useBasic', basic: 'struggleAttack' };
-    return state.player.stamina < 6 ? { type: 'useBasic', basic: 'catchBreath' } : { type: 'useBasic', basic: 'struggleMove' };
+    if (nearest <= 1) return { type: 'useBasic', basic: 'attack' };
+    if (nearest <= 3) return { type: 'useBasic', basic: 'spark' };
+    return state.player.stamina < 6 ? { type: 'useBasic', basic: 'catchBreath' } : { type: 'useBasic', basic: 'move' };
   }
 
   const effect = currentEffect(state);
@@ -76,7 +79,7 @@ export function botAction(state: CombatState): Action {
     const target = targets[0] as { id: string };
     return { type: 'attack', targetId: target.id };
   }
-  if (effect?.kind === 'move') {
+  if (effect?.kind === 'move' || effect?.kind === 'blink') {
     const next = effect && state.phase.kind === 'playerTurn' ? state.phase.effects[state.phase.index + 1] : undefined;
     const wanted = next?.kind === 'attack' ? (next as AttackEffect).range : 1;
     const tiles = legalMoveTargets(state);

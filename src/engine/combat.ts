@@ -1,9 +1,9 @@
-import { distance, findPath, hasLineOfSight, livingFigures, pathTowardAttack, pushPath, reachableTiles, samePos, tileAt } from './grid';
+import { blinkTargets, distance, findPath, hasLineOfSight, livingFigures, pathTowardAttack, pushPath, reachableTiles, samePos, tileAt } from './grid';
 import { shuffleInPlace } from './rng';
 import { IllegalActionError } from './types';
 import type {
-  Action, ApplyResult, AttackEffect, BasicAction, CardDef, CardInstance, CombatState, Condition, Effect,
-  EnemyDef, Faction, Figure, GameEvent, Modifier, ModifierDeck, Pos, RulesConfig, Tile,
+  Action, ApplyResult, AttackEffect, BasicDef, BasicId, CardDef, CardInstance, CombatState, Condition, Effect,
+  EnemyDef, Faction, Figure, GameEvent, Modifier, ModifierDeck, Pos, ResourceKind, RulesConfig, Tile,
 } from './types';
 
 export const PLAYER_ID = 'player';
@@ -11,18 +11,10 @@ export const PLAYER_ID = 'player';
 export const DEFAULT_RULES: RulesConfig = {
   handSize: 5,
   postFightRecovery: 0.25,
-  catchBreathStamina: 2,
-  basicInitiative: 90,
-  struggleAttackDamage: 1,
-  struggleMoveRange: 1,
+  staminaRegenPerRound: 1,
+  manaRegenPerRound: 1,
   trapDamage: 2,
   bleedDamage: 1,
-};
-
-const BASIC_ACTIONS: Record<BasicAction, { name: string; effects: (r: RulesConfig) => Effect[] }> = {
-  struggleMove: { name: 'Struggle: Move', effects: (r) => [{ kind: 'move', range: r.struggleMoveRange }] },
-  struggleAttack: { name: 'Struggle: Attack', effects: (r) => [{ kind: 'attack', damage: r.struggleAttackDamage, range: 1 }] },
-  catchBreath: { name: 'Catch Breath', effects: () => [] },
 };
 
 export function standardModifiers(): Modifier[] {
@@ -37,7 +29,8 @@ export interface CombatSetup {
   arena: ArenaLayout;
   deck: CardDef[];
   enemyDefs: EnemyDef[];
-  player: { hp: number; maxHp: number; stamina: number; maxStamina: number };
+  basics: Record<BasicId, BasicDef>;
+  player: { hp: number; maxHp: number; stamina: number; maxStamina: number; mana: number; maxMana: number };
   rules?: Partial<RulesConfig>;
 }
 
@@ -121,8 +114,12 @@ export function createCombat(setup: CombatSetup): ApplyResult {
   const state: CombatState = {
     rng, round: 0, width: setup.arena.width, height: setup.arena.height,
     tiles: [...setup.arena.tiles], exits: setup.arena.exits.map((p) => ({ ...p })), figures, cards,
-    player: { stamina: setup.player.stamina, maxStamina: setup.player.maxStamina, hand: [], deck, discard: [] },
-    committed: null, enemyDecks, revealed: {}, turnOrder: [], turnIndex: 0,
+    player: {
+      stamina: setup.player.stamina, maxStamina: setup.player.maxStamina,
+      mana: setup.player.mana, maxMana: setup.player.maxMana,
+      hand: [], deck, discard: [],
+    },
+    committed: null, basics: setup.basics, enemyDecks, revealed: {}, turnOrder: [], turnIndex: 0,
     playerModifiers: { draw: playerMods, discard: [], reshufflePending: false },
     enemyModifiers: { draw: enemyMods, discard: [], reshufflePending: false },
     phase: { kind: 'planning' }, rules,
@@ -143,12 +140,13 @@ export function currentEffect(state: CombatState): Effect | null {
 
 export const canPlayCard = (state: CombatState, cardId: string): boolean => {
   const card = state.cards[cardId];
-  return !!card && state.phase.kind === 'planning' && state.player.hand.includes(cardId) && card.staminaCost <= state.player.stamina;
+  return !!card && state.phase.kind === 'planning' && state.player.hand.includes(cardId) && card.cost <= state.player[card.costType];
 };
 
 export function legalMoveTargets(state: CombatState): Pos[] {
   const effect = currentEffect(state);
   const player = getPlayer(state);
+  if (effect?.kind === 'blink') return blinkTargets(state, player.pos, effect.range);
   if (effect?.kind !== 'move' || player.conditions.includes('root')) return [];
   return reachableTiles(state, player.pos, effect.range);
 }
@@ -177,26 +175,31 @@ export function applyAction(previous: CombatState, action: Action): ApplyResult 
       if (state.phase.kind !== 'planning') illegal('not in planning');
       const card = state.cards[action.cardId];
       if (!card || !state.player.hand.includes(action.cardId)) return illegal('card is not in hand');
-      if (card.staminaCost > state.player.stamina) illegal('not enough stamina');
-      changeStamina(state, -card.staminaCost, events);
+      if (card.cost > state.player[card.costType]) illegal(`not enough ${card.costType}`);
+      changeResource(state, card.costType, -card.cost, 'cost', events);
       state.committed = { cardId: card.instanceId, name: card.name, initiative: card.initiative };
-      events.push({ type: 'committed', name: card.name, initiative: card.initiative, staminaCost: card.staminaCost });
+      events.push({ type: 'committed', name: card.name, initiative: card.initiative, cost: card.cost, costType: card.costType });
       beginResolution(state, events);
       break;
     }
     case 'useBasic': {
       if (state.phase.kind !== 'planning') illegal('not in planning');
-      const initiative = state.rules.basicInitiative;
-      const name = BASIC_ACTIONS[action.basic].name;
+      const { name, initiative } = state.basics[action.basic];
       state.committed = { basic: action.basic, name, initiative };
-      events.push({ type: 'committed', name, initiative, staminaCost: 0 });
+      events.push({ type: 'committed', name, initiative, cost: 0, costType: null });
       beginResolution(state, events);
       break;
     }
     case 'move': {
       const effect = currentEffect(state);
-      if (effect?.kind !== 'move') return illegal('no move to resolve');
       const player = getPlayer(state);
+      if (effect?.kind === 'blink') {
+        if (!legalMoveTargets(state).some((p) => samePos(p, action.to))) illegal('tile is not in blink range');
+        moveAlong(state, player, [action.to], 'blinked', events);
+        advancePlayerEffects(state, events);
+        break;
+      }
+      if (effect?.kind !== 'move') return illegal('no move to resolve');
       if (player.conditions.includes('root')) illegal('rooted');
       const path = findPath(state, player.pos, action.to, effect.range);
       if (!path || path.length === 0) return illegal('tile is not reachable');
@@ -210,7 +213,8 @@ export function applyAction(previous: CombatState, action: Action): ApplyResult 
       const player = getPlayer(state);
       const legal = attackableBy(state, player, effect);
       if (!legal.some((f) => f.id === action.targetId)) illegal('target is not attackable');
-      const targets = effect.allAdjacent ? legal : legal.filter((f) => f.id === action.targetId);
+      const primary = legal.find((f) => f.id === action.targetId) as Figure;
+      const targets = effect.allAdjacent ? legal : [primary, ...blastVictims(state, primary, effect)];
       for (const target of targets) resolveAttack(state, player, target, effect, events);
       advancePlayerEffects(state, events);
       break;
@@ -232,8 +236,19 @@ export function applyAction(previous: CombatState, action: Action): ApplyResult 
   return { state, events };
 }
 
+/** Other enemies caught around the primary target. Walls shelter them. */
+function blastVictims(state: CombatState, primary: Figure, effect: AttackEffect): Figure[] {
+  const radius = effect.blast ?? 0;
+  return livingFigures(state).filter((f) => f.id !== primary.id && f.faction === primary.faction
+    && distance(f.pos, primary.pos) <= radius && hasLineOfSight(state, primary.pos, f.pos));
+}
+
 function startRound(state: CombatState, events: GameEvent[]): void {
   state.round += 1;
+  if (state.round > 1) {
+    changeResource(state, 'stamina', state.rules.staminaRegenPerRound, 'regen', events);
+    changeResource(state, 'mana', state.rules.manaRegenPerRound, 'regen', events);
+  }
   state.committed = null;
   state.revealed = {};
   state.turnOrder = [];
@@ -322,10 +337,9 @@ function runTurns(state: CombatState, events: GameEvent[]): void {
 function beginPlayerTurn(state: CombatState, events: GameEvent[]): boolean {
   const committed = state.committed;
   if (!committed) return false;
-  if (committed.basic === 'catchBreath') changeStamina(state, state.rules.catchBreathStamina, events);
   const effects = committed.cardId
     ? (state.cards[committed.cardId] as CardInstance).effects
-    : BASIC_ACTIONS[committed.basic as BasicAction].effects(state.rules);
+    : state.basics[committed.basic as BasicId].effects;
   state.phase = { kind: 'playerTurn', effects, index: 0 };
   return settlePlayerEffects(state, events);
 }
@@ -343,9 +357,14 @@ function settlePlayerEffects(state: CombatState, events: GameEvent[]): boolean {
     switch (effect.kind) {
       case 'heal': applyHeal(player, effect.amount, events); break;
       case 'shield': player.shield += effect.amount; events.push({ type: 'shielded', figureId: player.id, amount: effect.amount }); break;
+      case 'restore':
+        changeResource(state, 'stamina', effect.stamina, 'restore', events);
+        changeResource(state, 'mana', effect.mana, 'restore', events);
+        break;
       case 'move':
+      case 'blink':
         if (legalMoveTargets(state).length > 0) return true;
-        events.push({ type: 'effectSkipped', kind: 'move', chosen: false });
+        events.push({ type: 'effectSkipped', kind: effect.kind, chosen: false });
         break;
       case 'attack':
         if (legalAttackTargets(state).length > 0) return true;
@@ -409,11 +428,12 @@ function runEnemyTurn(state: CombatState, enemy: Figure, events: GameEvent[]): v
         break;
       case 'heal': applyHeal(enemy, effect.amount, events); break;
       case 'shield': enemy.shield += effect.amount; events.push({ type: 'shielded', figureId: enemy.id, amount: effect.amount }); break;
+      default: break;
     }
   });
 }
 
-function moveAlong(state: CombatState, figure: Figure, path: Pos[], type: 'moved' | 'pushed', events: GameEvent[]): void {
+function moveAlong(state: CombatState, figure: Figure, path: Pos[], type: 'moved' | 'pushed' | 'blinked', events: GameEvent[]): void {
   events.push({ type, figureId: figure.id, path: path.map((p) => ({ ...p })) });
   for (const step of path) {
     figure.pos = { ...step };
@@ -494,11 +514,16 @@ function applyHeal(figure: Figure, amount: number, events: GameEvent[]): void {
   }
 }
 
-function changeStamina(state: CombatState, delta: number, events: GameEvent[]): void {
-  const before = state.player.stamina;
-  state.player.stamina = Math.min(state.player.maxStamina, Math.max(0, before + delta));
-  const applied = state.player.stamina - before;
-  if (applied !== 0) events.push({ type: 'staminaChanged', delta: applied, stamina: state.player.stamina });
+function changeResource(
+  state: CombatState, resource: ResourceKind, delta: number,
+  source: 'cost' | 'regen' | 'restore' | 'recovery', events: GameEvent[],
+): void {
+  const p = state.player;
+  const before = p[resource];
+  const max = resource === 'stamina' ? p.maxStamina : p.maxMana;
+  p[resource] = Math.min(max, Math.max(0, before + delta));
+  const applied = p[resource] - before;
+  if (applied !== 0) events.push({ type: 'resourceChanged', resource, delta: applied, value: p[resource], source });
 }
 
 function checkEnd(state: CombatState, events: GameEvent[]): boolean {
@@ -509,7 +534,7 @@ function checkEnd(state: CombatState, events: GameEvent[]): boolean {
 
 function endCombat(state: CombatState, outcome: 'won' | 'lost' | 'fled', events: GameEvent[]): void {
   if (outcome === 'won') {
-    changeStamina(state, Math.ceil(state.player.maxStamina * state.rules.postFightRecovery), events);
+    changeResource(state, 'stamina', Math.ceil(state.player.maxStamina * state.rules.postFightRecovery), 'recovery', events);
   }
   state.phase = { kind: 'ended', outcome };
   events.push({ type: 'combatEnded', outcome });

@@ -10,16 +10,22 @@ describe('content', () => {
     expect(STARTER_DECK.length).toBeLessThanOrEqual(20);
   });
 
+  it('includes both physical cards and spells in the test deck', () => {
+    expect(STARTER_DECK.some((c) => c.costType === 'stamina')).toBe(true);
+    expect(STARTER_DECK.some((c) => c.costType === 'mana')).toBe(true);
+  });
+
   it('resolves every arena enemy key to a definition', () => {
     for (const id of Object.values(ENEMY_KEYS)) expect(ENEMIES.has(id)).toBe(true);
   });
 
   it('rejects malformed and duplicate cards', () => {
-    const good = { id: 'a', name: 'A', initiative: 10, staminaCost: 1, effects: [{ kind: 'move', range: 1 }] };
+    const good = { id: 'a', name: 'A', initiative: 10, cost: 1, costType: 'stamina', effects: [{ kind: 'move', range: 1 }] };
     expect(() => loadCards([good, good])).toThrow(/Duplicate/);
     expect(() => loadCards([{ ...good, initiative: 0 }])).toThrow();
     expect(() => loadCards([{ ...good, effects: [{ kind: 'teleport' }] }])).toThrow();
     expect(() => loadCards([{ ...good, typo: 1 }])).toThrow();
+    expect(() => loadCards([{ ...good, costType: 'gold' }])).toThrow();
   });
 
   it('gives the test arena a reachable exit', () => {

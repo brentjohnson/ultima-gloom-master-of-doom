@@ -99,9 +99,10 @@ export class GameController {
     const { state, busy } = this.snapshot;
     if (busy) return;
     const effect = currentEffect(state);
-    if (effect?.kind === 'move' && samePos(pos, getPlayer(state).pos)) {
+    const moving = effect?.kind === 'move' || effect?.kind === 'blink';
+    if (moving && samePos(pos, getPlayer(state).pos)) {
       void this.dispatch({ type: 'skipEffect' });
-    } else if (effect?.kind === 'move' && legalMoveTargets(state).some((p) => samePos(p, pos))) {
+    } else if (moving && legalMoveTargets(state).some((p) => samePos(p, pos))) {
       void this.dispatch({ type: 'move', to: pos });
     } else if (effect?.kind === 'attack') {
       const target = legalAttackTargets(state).find((f) => samePos(f.pos, pos));

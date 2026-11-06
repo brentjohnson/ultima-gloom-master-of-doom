@@ -11,18 +11,26 @@ export interface AttackEffect {
   range: number;
   /** Hits every enemy next to the attacker instead of one target. */
   allAdjacent?: boolean;
+  /** Also hits enemies within this distance of the target, if the target can see them. */
+  blast?: number;
   push?: number;
   conditions?: Condition[];
 }
 export interface HealEffect { kind: 'heal'; amount: number }
 export interface ShieldEffect { kind: 'shield'; amount: number }
-export type Effect = MoveEffect | AttackEffect | HealEffect | ShieldEffect;
+/** Teleports to a tile in sight, crossing water and figures. Works while rooted. */
+export interface BlinkEffect { kind: 'blink'; range: number }
+export interface RestoreEffect { kind: 'restore'; stamina: number; mana: number }
+export type Effect = MoveEffect | AttackEffect | HealEffect | ShieldEffect | BlinkEffect | RestoreEffect;
+
+export type ResourceKind = 'stamina' | 'mana';
 
 export interface CardDef {
   id: string;
   name: string;
   initiative: number;
-  staminaCost: number;
+  cost: number;
+  costType: ResourceKind;
   effects: Effect[];
 }
 
@@ -54,12 +62,21 @@ export interface CardInstance extends CardDef { instanceId: string }
 export interface PlayerResources {
   stamina: number;
   maxStamina: number;
+  mana: number;
+  maxMana: number;
   hand: string[];
   deck: string[];
   discard: string[];
 }
 
-export type BasicAction = 'struggleMove' | 'struggleAttack' | 'catchBreath';
+export type BasicId = 'move' | 'attack' | 'spark' | 'catchBreath';
+
+/** A free, always-available action. Combat receives these already resolved from data. */
+export interface BasicDef {
+  name: string;
+  initiative: number;
+  effects: Effect[];
+}
 
 export type Outcome = 'won' | 'lost' | 'fled';
 
@@ -75,10 +92,8 @@ export interface RulesConfig {
   handSize: number;
   /** Fraction of max stamina regained after a won fight. */
   postFightRecovery: number;
-  catchBreathStamina: number;
-  basicInitiative: number;
-  struggleAttackDamage: number;
-  struggleMoveRange: number;
+  staminaRegenPerRound: number;
+  manaRegenPerRound: number;
   trapDamage: number;
   bleedDamage: number;
 }
@@ -96,7 +111,8 @@ export interface CombatState {
   cards: Record<string, CardInstance>;
   player: PlayerResources;
   /** Card or basic action committed this round. */
-  committed: { cardId?: string; basic?: BasicAction; name: string; initiative: number } | null;
+  committed: { cardId?: string; basic?: BasicId; name: string; initiative: number } | null;
+  basics: Record<BasicId, BasicDef>;
   enemyDecks: Record<string, { draw: EnemyBehavior[]; discard: EnemyBehavior[] }>;
   /** Behaviors for this round, by enemy def. Empty until the player commits. */
   revealed: Record<string, EnemyBehavior>;
@@ -110,7 +126,7 @@ export interface CombatState {
 
 export type Action =
   | { type: 'playCard'; cardId: string }
-  | { type: 'useBasic'; basic: BasicAction }
+  | { type: 'useBasic'; basic: BasicId }
   | { type: 'move'; to: Pos }
   | { type: 'attack'; targetId: string }
   | { type: 'skipEffect' }
@@ -118,12 +134,13 @@ export type Action =
 
 export type GameEvent =
   | { type: 'roundStarted'; round: number }
-  | { type: 'committed'; name: string; initiative: number; staminaCost: number }
+  | { type: 'committed'; name: string; initiative: number; cost: number; costType: ResourceKind | null }
   | { type: 'revealed'; enemyDefId: string; enemyName: string; behavior: string; initiative: number }
   | { type: 'turnStarted'; figureId: string; name: string }
   | { type: 'turnSkipped'; figureId: string; name: string; reason: Condition }
   | { type: 'moved'; figureId: string; path: Pos[] }
   | { type: 'pushed'; figureId: string; path: Pos[] }
+  | { type: 'blinked'; figureId: string; path: Pos[] }
   | { type: 'attacked'; attackerId: string; targetId: string; base: number; modifier: Modifier; total: number }
   | { type: 'damaged'; figureId: string; amount: number; blocked: number; hp: number; source: 'attack' | 'bleed' | 'trap' }
   | { type: 'trapSprung'; pos: Pos; figureId: string }
@@ -132,7 +149,7 @@ export type GameEvent =
   | { type: 'healed'; figureId: string; amount: number; hp: number }
   | { type: 'shielded'; figureId: string; amount: number }
   | { type: 'defeated'; figureId: string; name: string }
-  | { type: 'staminaChanged'; delta: number; stamina: number }
+  | { type: 'resourceChanged'; resource: ResourceKind; delta: number; value: number; source: 'cost' | 'regen' | 'restore' | 'recovery' }
   | { type: 'modifierDeckShuffled'; owner: Faction }
   | { type: 'effectSkipped'; kind: Effect['kind']; chosen: boolean }
   | { type: 'combatEnded'; outcome: Outcome };

@@ -198,6 +198,16 @@ export class ArenaView {
       case 'pushed':
         await this.slide(event.figureId, event.path, 70);
         break;
+      case 'blinked': {
+        const root = this.figures.get(event.figureId)?.root;
+        const to = event.path[event.path.length - 1];
+        if (root && to) {
+          await tween(90, (t) => { root.alpha = 1 - t; });
+          root.position.set(to.x * TILE, to.y * TILE);
+          await tween(90, (t) => { root.alpha = t; });
+        }
+        break;
+      }
       case 'attacked':
         await this.lunge(event.attackerId, event.targetId);
         this.float(event.targetId, `${event.base} ${modifierLabel(event.modifier)} = ${event.total}`, '#ffffff');

@@ -22,13 +22,15 @@ h2 { font-size: 11px; margin: 12px 0 4px; color: #8a93ab; text-transform: upperc
 .hand { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .card-slot { display: flex; min-width: 0; }
 .card-slot.committed .card { border-color: #f2d94e; opacity: 1; }
-.card { display: flex; flex-direction: column; gap: 4px; width: 100%; height: 104px; text-align: left; padding: 6px; background: #20232d; }
+.card { display: flex; flex-direction: column; gap: 4px; width: 100%; height: 112px; text-align: left; padding: 6px; background: #20232d; }
 .card-top { display: flex; justify-content: space-between; }
 .init { color: #f2d94e; font-weight: bold; }
-.cost { color: #7fb8f0; }
+.cost.stamina { color: #7fb8f0; }
+.cost.mana { color: #c79af0; }
+.card.mana { background: #272034; border-color: #6a4f8f; }
 .card-name { font-weight: bold; color: #f4e9c1; }
 .card-text { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #b9bdc9; }
-.basics { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.basics { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .basic { display: flex; flex-direction: column; text-align: left; padding: 4px 8px; }
 .basic span { font-size: 11px; color: #9aa0b0; }
 
@@ -40,6 +42,8 @@ h2 { font-size: 11px; margin: 12px 0 4px; color: #8a93ab; text-transform: upperc
 .bar-fill { height: 100%; transition: width 0.15s; }
 .bar-fill.hp { background: #5fd35f; }
 .bar-fill.stamina { background: #4f9fe6; }
+.bar-fill.mana { background: #a56be0; }
+.rule-note { margin: 6px 0 0; color: #8a93ab; font-size: 11px; line-height: 1.35; }
 .bar-value { text-align: right; }
 .status { min-height: 16px; display: flex; gap: 8px; color: #9fc5ff; }
 .conditions { color: #f2a64e; }

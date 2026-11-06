@@ -22,24 +22,29 @@ function modifierText(modifier: Modifier): string {
   return modifier.value >= 0 ? `+${modifier.value}` : `${modifier.value}`;
 }
 
+const YOU = 'You';
+const subject = (name: string, base: string, third: string) => `${name} ${name === YOU ? base : third}`;
+
 /** One log line per event, or null for events that would only add noise. */
 export function logLine(event: GameEvent, nameOf: (id: string) => string): string | null {
   switch (event.type) {
     case 'roundStarted': return `-- Round ${event.round} --`;
     case 'committed': return `You commit ${event.name} (initiative ${event.initiative}).`;
     case 'revealed': return `${event.enemyName}: ${event.behavior} (initiative ${event.initiative}).`;
-    case 'turnSkipped': return `${event.name} is stunned and loses the turn.`;
-    case 'attacked': return `${nameOf(event.attackerId)} attacks ${nameOf(event.targetId)}: ${event.base}, modifier ${modifierText(event.modifier)}, total ${event.total}.`;
+    case 'turnSkipped': return event.name === YOU ? 'You are stunned and lose the turn.' : `${event.name} is stunned and loses the turn.`;
+    case 'attacked': return `${subject(nameOf(event.attackerId), 'attack', 'attacks')} ${nameOf(event.targetId)}: ${event.base}, modifier ${modifierText(event.modifier)}, total ${event.total}.`;
     case 'damaged':
-      if (event.source === 'attack') return event.blocked > 0 ? `${nameOf(event.figureId)} blocks ${event.blocked} and takes ${event.amount}.` : null;
-      return `${nameOf(event.figureId)} takes ${event.amount} from ${event.source}.`;
-    case 'trapSprung': return `${nameOf(event.figureId)} springs a trap!`;
-    case 'conditionApplied': return `${nameOf(event.figureId)} gains ${event.condition}.`;
-    case 'healed': return `${nameOf(event.figureId)} heals ${event.amount}.`;
-    case 'shielded': return `${nameOf(event.figureId)} gains shield ${event.amount}.`;
-    case 'defeated': return `${event.name} is defeated.`;
+      if (event.source === 'attack') return event.blocked > 0 ? `${subject(nameOf(event.figureId), 'block', 'blocks')} ${event.blocked} and take${nameOf(event.figureId) === YOU ? '' : 's'} ${event.amount}.` : null;
+      return `${subject(nameOf(event.figureId), 'take', 'takes')} ${event.amount} from ${event.source}.`;
+    case 'trapSprung': return `${subject(nameOf(event.figureId), 'spring', 'springs')} a trap!`;
+    case 'conditionApplied': return `${subject(nameOf(event.figureId), 'gain', 'gains')} ${event.condition}.`;
+    case 'healed': return `${subject(nameOf(event.figureId), 'heal', 'heals')} ${event.amount}.`;
+    case 'shielded': return `${subject(nameOf(event.figureId), 'gain', 'gains')} shield ${event.amount}.`;
+    case 'defeated': return event.name === YOU ? 'You are defeated.' : `${event.name} is defeated.`;
     case 'modifierDeckShuffled': return `${event.owner === 'player' ? 'Your' : 'The enemy'} modifier deck is reshuffled.`;
-    case 'effectSkipped': return `No legal ${event.kind}, so it is skipped.`;
+    case 'effectSkipped':
+      if (event.chosen) return event.kind === 'move' ? 'You stay put.' : `You skip the ${event.kind}.`;
+      return `No legal ${event.kind}, so it is skipped.`;
     case 'combatEnded': return event.outcome === 'won' ? 'Victory!' : event.outcome === 'fled' ? 'You escape.' : 'You have fallen.';
     default: return null;
   }

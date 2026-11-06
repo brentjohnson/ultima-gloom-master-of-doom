@@ -9,6 +9,41 @@ async function clickTile(page: Page, x: number, y: number) {
   await page.getByTestId('arena').locator('canvas').click({ position: { x: x * TILE + 24, y: y * TILE + 24 } });
 }
 
+test('with enemies adjacent, clicking yourself keeps you in place for a cleave', async ({ page }) => {
+  for (let seed = 1; ; seed++) {
+    expect(seed).toBeLessThan(50);
+    await page.goto(`/?seed=${seed}`);
+    await expect(page.locator('.card')).toHaveCount(5);
+    if (await page.locator('[data-card="wide-cleave"]').count()) break;
+  }
+  await expect(page.locator('.arena canvas')).toBeVisible();
+  // Put both skulkers beside the player, at the start tile (1,4).
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: GameController }).__game;
+    const skulkers = g.snapshot.state.figures.filter((f) => f.defId === 'mire-skulker');
+    (skulkers[0] as { pos: object }).pos = { x: 1, y: 3 };
+    (skulkers[1] as { pos: object }).pos = { x: 2, y: 4 };
+  });
+  await page.locator('[data-card="wide-cleave"]').click();
+  await idle(page);
+  await expect(page.getByTestId('prompt')).toContainText('click yourself to stay put');
+  await expect(page.getByRole('button', { name: 'Stay put' })).toBeVisible();
+
+  await clickTile(page, 1, 4);
+  await idle(page);
+  await expect(page.getByTestId('log')).toContainText('You stay put.');
+  await expect(page.getByTestId('prompt')).toContainText('click a red target');
+  const pos = await page.evaluate(() => (window as unknown as { __game: GameController }).__game.player.pos);
+  expect(pos).toEqual({ x: 1, y: 4 });
+
+  const target = await page.evaluate(() => (window as unknown as { __game: GameController }).__game
+    .snapshot.state.figures.find((f) => f.defId === 'mire-skulker' && f.hp > 0)?.pos);
+  await clickTile(page, (target as { x: number }).x, (target as { y: number }).y);
+  await idle(page);
+  await expect(page.getByTestId('log')).toContainText('You attack Mire Skulker 1');
+  await expect(page.getByTestId('log')).toContainText('You attack Mire Skulker 2');
+});
+
 test('a fight can be played with real clicks through to an outcome', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -50,7 +85,7 @@ test('a fight can be played with real clicks through to an outcome', async ({ pa
       }
       return null;
     });
-    const skip = page.getByRole('button', { name: /^(Skip|End turn)$/ });
+    const skip = page.getByRole('button', { name: /^(Stay put|Skip attack|End turn)$/ });
     if (choice) {
       await clickTile(page, choice.x, choice.y);
       await page.waitForTimeout(50);

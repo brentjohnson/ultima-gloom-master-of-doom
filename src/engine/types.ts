@@ -134,7 +134,7 @@ export type GameEvent =
   | { type: 'defeated'; figureId: string; name: string }
   | { type: 'staminaChanged'; delta: number; stamina: number }
   | { type: 'modifierDeckShuffled'; owner: Faction }
-  | { type: 'effectSkipped'; kind: Effect['kind'] }
+  | { type: 'effectSkipped'; kind: Effect['kind']; chosen: boolean }
   | { type: 'combatEnded'; outcome: Outcome };
 
 export interface ApplyResult { state: CombatState; events: GameEvent[] }

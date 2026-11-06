@@ -140,12 +140,13 @@ export class ArenaView {
     view.hpBar.rect(3, TILE - 5, Math.max(0, (TILE - 6) * (hp / maxHp)), 3).fill(hp / maxHp > 0.4 ? 0x5fd35f : 0xe0403f);
   }
 
-  /** Marks legal choices: green for move tiles, red for attack targets. */
-  setHighlights(moves: Pos[], targets: Pos[]): void {
+  /** Marks legal choices: green to move, red to attack, yellow to stay where you are. */
+  setHighlights(moves: Pos[], targets: Pos[], stay: Pos | null = null): void {
     const g = this.highlightLayer;
     g.clear();
     for (const p of moves) g.rect(p.x * TILE + 1, p.y * TILE + 1, TILE - 2, TILE - 2).fill({ color: 0x5fd35f, alpha: 0.25 }).stroke({ color: 0x5fd35f, alpha: 0.7, width: 1 });
     for (const p of targets) g.rect(p.x * TILE + 1, p.y * TILE + 1, TILE - 2, TILE - 2).fill({ color: 0xe0403f, alpha: 0.3 }).stroke({ color: 0xe0403f, width: 2 });
+    if (stay) g.rect(stay.x * TILE + 1, stay.y * TILE + 1, TILE - 2, TILE - 2).stroke({ color: 0xf2d94e, width: 2 });
   }
 
   private async slide(figureId: string, path: Pos[], stepMs: number): Promise<void> {

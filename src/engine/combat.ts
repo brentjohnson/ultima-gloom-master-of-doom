@@ -218,7 +218,7 @@ export function applyAction(previous: CombatState, action: Action): ApplyResult 
     case 'skipEffect': {
       if (state.phase.kind !== 'playerTurn') illegal('nothing to skip');
       const effect = currentEffect(state);
-      if (effect) events.push({ type: 'effectSkipped', kind: effect.kind });
+      if (effect) events.push({ type: 'effectSkipped', kind: effect.kind, chosen: true });
       advancePlayerEffects(state, events);
       break;
     }
@@ -345,11 +345,11 @@ function settlePlayerEffects(state: CombatState, events: GameEvent[]): boolean {
       case 'shield': player.shield += effect.amount; events.push({ type: 'shielded', figureId: player.id, amount: effect.amount }); break;
       case 'move':
         if (legalMoveTargets(state).length > 0) return true;
-        events.push({ type: 'effectSkipped', kind: 'move' });
+        events.push({ type: 'effectSkipped', kind: 'move', chosen: false });
         break;
       case 'attack':
         if (legalAttackTargets(state).length > 0) return true;
-        events.push({ type: 'effectSkipped', kind: 'attack' });
+        events.push({ type: 'effectSkipped', kind: 'attack', chosen: false });
         break;
     }
     state.phase.index += 1;

@@ -144,7 +144,7 @@ describe('conditions, shields and terrain', () => {
     const start = withHand(['@.......d'], fullDeck(step3, strike));
     start.figures[0]?.conditions.push('root');
     const { state, events } = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'step3') });
-    expect(events).toContainEqual({ type: 'effectSkipped', kind: 'move' });
+    expect(events).toContainEqual({ type: 'effectSkipped', kind: 'move', chosen: false });
     expect(getPlayer(state).pos).toEqual({ x: 0, y: 0 });
     expect(state.round).toBe(2);
   });
@@ -189,6 +189,20 @@ describe('conditions, shields and terrain', () => {
     const across = step(committed, { type: 'move', to: { x: 2, y: 0 } });
     expect(across.events.some((e) => e.type === 'trapSprung')).toBe(true);
     expect(getPlayer(across.state).hp).toBe(18);
+  });
+});
+
+describe('declining a card effect', () => {
+  it('lets the player skip a move and still hit everything adjacent', () => {
+    const cleave = card('cleave', 1, 2, [{ kind: 'move', range: 1 }, { kind: 'attack', damage: 3, range: 1, allAdjacent: true }]);
+    const start = withHand(['.d.', 'd@.', '...'], fullDeck(cleave, step3));
+    const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'cleave') }).state;
+    const skipped = step(committed, { type: 'skipEffect' });
+    expect(skipped.events).toContainEqual({ type: 'effectSkipped', kind: 'move', chosen: true });
+    expect(getPlayer(skipped.state).pos).toEqual({ x: 1, y: 1 });
+    const { events } = step(skipped.state, { type: 'attack', targetId: 'e0' });
+    const hit = events.flatMap((e) => (e.type === 'attacked' ? [e.targetId] : []));
+    expect(hit.sort()).toEqual(['e0', 'e1']);
   });
 });
 

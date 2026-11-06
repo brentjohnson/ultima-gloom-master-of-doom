@@ -46,9 +46,16 @@ function promptFor(state: CombatState, busy: boolean): string {
   if (state.phase.kind === 'planning') return 'Choose one card or basic action. Enemy plans are hidden until you commit.';
   if (state.phase.kind === 'ended') return '';
   const effect = currentEffect(state);
-  if (effect?.kind === 'move') return `${describeEffect(effect)}: click a green tile, or skip.`;
-  if (effect?.kind === 'attack') return `${describeEffect(effect)}: click a red target, or skip.`;
+  if (effect?.kind === 'move') return `${describeEffect(effect)}: click a green tile, or click yourself to stay put.`;
+  if (effect?.kind === 'attack') return `${describeEffect(effect)}: click a red target, or skip the attack.`;
   return 'You are on an exit: flee, or end your turn.';
+}
+
+function skipLabel(state: CombatState): string {
+  const kind = currentEffect(state)?.kind;
+  if (kind === 'move') return 'Stay put';
+  if (kind === 'attack') return 'Skip attack';
+  return 'End turn';
 }
 
 function EnemyRow({ enemy, state }: { enemy: Figure; state: CombatState }) {
@@ -108,7 +115,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         </div>
         <div class="turn-bar">
           <p class="prompt" data-testid="prompt">{promptFor(state, busy)}</p>
-          {resolving && <button onClick={() => void game.dispatch({ type: 'skipEffect' })}>{currentEffect(state) ? 'Skip' : 'End turn'}</button>}
+          {resolving && <button onClick={() => void game.dispatch({ type: 'skipEffect' })}>{skipLabel(state)}</button>}
           {resolving && isOnExit(state) && <button class="primary" onClick={() => void game.dispatch({ type: 'flee' })}>Flee</button>}
         </div>
         <div class="hand">

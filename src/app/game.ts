@@ -89,7 +89,9 @@ export class GameController {
 
   private refreshHighlights(): void {
     const { state } = this.snapshot;
-    this.view?.setHighlights(legalMoveTargets(state), legalAttackTargets(state).map((f) => f.pos));
+    const moves = legalMoveTargets(state);
+    const stay = moves.length > 0 ? getPlayer(state).pos : null;
+    this.view?.setHighlights(moves, legalAttackTargets(state).map((f) => f.pos), stay);
   }
 
   /** A map click means whatever the current effect is asking for. */
@@ -97,7 +99,9 @@ export class GameController {
     const { state, busy } = this.snapshot;
     if (busy) return;
     const effect = currentEffect(state);
-    if (effect?.kind === 'move' && legalMoveTargets(state).some((p) => samePos(p, pos))) {
+    if (effect?.kind === 'move' && samePos(pos, getPlayer(state).pos)) {
+      void this.dispatch({ type: 'skipEffect' });
+    } else if (effect?.kind === 'move' && legalMoveTargets(state).some((p) => samePos(p, pos))) {
       void this.dispatch({ type: 'move', to: pos });
     } else if (effect?.kind === 'attack') {
       const target = legalAttackTargets(state).find((f) => samePos(f.pos, pos));

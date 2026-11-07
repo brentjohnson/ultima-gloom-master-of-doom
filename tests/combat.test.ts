@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, canPlayCard, createCombat, getPlayer, hasLineOfSight, IllegalActionError, legalMoveTargets, parseArena } from '../src/engine';
 import { biter, card, cardIdNamed, dummy, playOut, rigModifier, setup, step } from './helpers';
-import { testFightSetup } from '../src/content';
+import { BASICS, testFightSetup } from '../src/content';
 
 const strike = card('strike', 20, 2, [{ kind: 'attack', damage: 3, range: 1 }]);
 const step3 = card('step3', 10, 1, [{ kind: 'move', range: 3 }]);
@@ -195,6 +195,38 @@ describe('conditions, shields and terrain', () => {
     const start = withHand(['@~.', '...', '.d.'], fullDeck(step3, strike));
     const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'step3') }).state;
     expect(legalMoveTargets(committed)).not.toContainEqual({ x: 1, y: 0 });
+  });
+
+  it('doors block sight until someone walks through, and stay open', () => {
+    const start = withHand(['@+.d'], fullDeck(step3, strike));
+    expect(hasLineOfSight(start, { x: 0, y: 0 }, { x: 3, y: 0 })).toBe(false);
+    const committed = step(start, { type: 'playCard', cardId: cardIdNamed(start, 'step3') }).state;
+    const { state, events } = step(committed, { type: 'move', to: { x: 2, y: 0 } });
+    expect(events).toContainEqual({ type: 'doorOpened', pos: { x: 1, y: 0 } });
+    expect(state.tiles[1]).toBe('openDoor');
+    expect(hasLineOfSight(state, { x: 0, y: 0 }, { x: 3, y: 0 })).toBe(true);
+  });
+
+  it('trees block movement and sight; grass does neither', () => {
+    const { state } = setup(['@T,d'], fullDeck());
+    expect(hasLineOfSight(state, { x: 0, y: 0 }, { x: 3, y: 0 })).toBe(false);
+    const open = setup(['@,,d'], fullDeck()).state;
+    expect(hasLineOfSight(open, { x: 0, y: 0 }, { x: 3, y: 0 })).toBe(true);
+  });
+
+  it('treats everything outside the fight area as wall, with level coordinates inside it', () => {
+    const layout = parseArena(['@.d'], { d: 'dummy' });
+    const { state } = createCombat({
+      seed: 1, deck: fullDeck(), enemyDefs: [dummy], basics: BASICS,
+      arena: {
+        ...layout, originX: 10, originY: 20, playerStart: { x: 10, y: 20 },
+        enemies: [{ defId: 'dummy', pos: { x: 12, y: 20 } }],
+      },
+      player: { hp: 20, maxHp: 20, stamina: 20, maxStamina: 20, mana: 10, maxMana: 10 },
+    });
+    const move = applyAction(state, { type: 'useBasic', basic: 'move' }).state;
+    expect(legalMoveTargets(move)).toEqual([{ x: 11, y: 20 }]);
+    expect(applyAction(move, { type: 'move', to: { x: 11, y: 20 } }).state.figures[0]?.pos).toEqual({ x: 11, y: 20 });
   });
 
   it('routes around a trap when range allows, and crosses it only when it must', () => {

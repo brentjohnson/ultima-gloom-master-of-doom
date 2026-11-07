@@ -76,6 +76,101 @@ function EnemyRow({ enemy, state }: { enemy: Figure; state: CombatState }) {
 
 const OUTCOME_TEXT = { won: 'Victory!', lost: 'You have fallen.', fled: 'You escaped.' } as const;
 
+function OutcomeOverlay({ game, combat, seed }: { game: GameController; combat: CombatState; seed: number }) {
+  if (combat.phase.kind !== 'ended') return null;
+  const { outcome } = combat.phase;
+  const player = getPlayer(combat);
+  const finish = () => void game.dispatch({ type: 'finishCombat' });
+  return (
+    <div class="overlay" data-testid="outcome">
+      <h2>{OUTCOME_TEXT[outcome]}</h2>
+      <p>
+        Round {combat.round}: {player.hp}/{player.maxHp} HP, {combat.player.stamina}/{combat.player.maxStamina} stamina,
+        {' '}{combat.player.mana}/{combat.player.maxMana} mana{outcome === 'won' ? ' (after recovery)' : ''}.
+      </p>
+      {game.testFight
+        ? (
+          <>
+            <button class="primary" onClick={() => game.newGame((Math.random() * 2 ** 31) | 0)}>New fight</button>
+            <button onClick={() => game.newGame(seed)}>Retry same seed</button>
+          </>
+        )
+        : <button class="primary" onClick={finish}>Continue</button>}
+    </div>
+  );
+}
+
+function CombatPanel({ game, combat, busy }: { game: GameController; combat: CombatState; busy: boolean }) {
+  const planning = combat.phase.kind === 'planning' && !busy;
+  const resolving = combat.phase.kind === 'playerTurn' && !busy;
+  return (
+    <>
+      <div class="turn-bar">
+        <p class="prompt" data-testid="prompt">{promptFor(combat, busy)}</p>
+        {resolving && <button onClick={() => void game.dispatchCombat({ type: 'skipEffect' })}>{skipLabel(combat)}</button>}
+        {resolving && isOnExit(combat) && <button class="primary" onClick={() => void game.dispatchCombat({ type: 'flee' })}>Flee</button>}
+      </div>
+      <div class="hand">
+        {combat.player.hand.map((id) => {
+          const card = combat.cards[id] as CardInstance;
+          const isCommitted = combat.committed?.cardId === id;
+          return (
+            <div class={isCommitted ? 'card-slot committed' : 'card-slot'} key={id}>
+              <CardView card={card} enabled={planning && game.canPlay(id)} onPlay={() => void game.dispatchCombat({ type: 'playCard', cardId: id })} />
+            </div>
+          );
+        })}
+        <div class="basics">
+          {BASIC_ORDER.map((id) => {
+            const basic = combat.basics[id];
+            return (
+              <button key={id} class="basic" disabled={!planning} data-basic={id} onClick={() => void game.dispatchCombat({ type: 'useBasic', basic: id })}>
+                <strong>{basic.name}</strong>
+                <span>{basic.effects.map(describeEffect).join('; ')}</span>
+                <span>Free, init {basic.initiative}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CombatSidebar({ combat }: { combat: CombatState }) {
+  const player = getPlayer(combat);
+  return (
+    <>
+      <div class="status">
+        {player.shield > 0 && <span>Shield {player.shield}</span>}
+        {player.conditions.length > 0 && <span class="conditions">{player.conditions.join(', ')}</span>}
+      </div>
+      <div class="piles">
+        Deck {combat.player.deck.length}, discard {combat.player.discard.length}, modifiers {combat.playerModifiers.draw.length} left
+      </div>
+      <p class="rule-note">Only up, down, left and right count as adjacent. A diagonal square is range 2. Each round you regain {combat.rules.staminaRegenPerRound} stamina and {combat.rules.manaRegenPerRound} mana.</p>
+
+      <h2>Turn order</h2>
+      {combat.turnOrder.length === 0
+        ? <p class="hidden-intent">Set when you commit.</p>
+        : (
+          <ol class="turn-order">
+            {combat.turnOrder.map((t, i) => {
+              const f = combat.figures.find((x) => x.id === t.figureId);
+              if (!f || f.hp <= 0) return null;
+              return <li key={t.figureId} class={i === combat.turnIndex ? 'active' : ''}>[{t.initiative}] {f.name}</li>;
+            })}
+          </ol>
+        )}
+
+      <h2>Enemies</h2>
+      <ul class="enemies">
+        {livingEnemies(combat).map((e) => <EnemyRow key={e.id} enemy={e} state={combat} />)}
+      </ul>
+    </>
+  );
+}
+
 export function App({ game, mountArena }: { game: GameController; mountArena: (host: HTMLElement) => void }) {
   const { state, busy, log, seed } = useSnapshot(game);
   const arenaHost = useRef<HTMLDivElement>(null);
@@ -88,92 +183,50 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
     logEnd.current?.scrollIntoView({ block: 'end' });
   }, [log.length]);
 
-  const player = getPlayer(state);
-  const planning = state.phase.kind === 'planning' && !busy;
-  const resolving = state.phase.kind === 'playerTurn' && !busy;
-  const ended = state.phase.kind === 'ended' && !busy;
-  const modifiers = state.playerModifiers;
+  const combat = state.combat;
+  const c = state.character;
+  // During a fight the fight's own numbers are the live ones.
+  const hp = combat ? getPlayer(combat).hp : c.hp;
+  const stamina = combat ? combat.player.stamina : c.stamina;
+  const mana = combat ? combat.player.mana : c.mana;
+  const phase = combat ? combat.phase.kind : state.mode;
 
   return (
-    <div class="layout" data-busy={busy} data-phase={state.phase.kind} data-round={state.round}>
+    <div class="layout" data-busy={busy} data-mode={state.mode} data-phase={phase} data-round={combat?.round ?? 0} data-level={state.levelId}>
       <div class="main-column">
         <div class="arena-wrap">
           <div ref={arenaHost} class="arena" data-testid="arena" />
-          {ended && state.phase.kind === 'ended' && (
-            <div class="overlay" data-testid="outcome">
-              <h2>{OUTCOME_TEXT[state.phase.outcome]}</h2>
-              <p>
-                Round {state.round}: {player.hp}/{player.maxHp} HP, {state.player.stamina}/{state.player.maxStamina} stamina, {state.player.mana}/{state.player.maxMana} mana
-                {state.phase.outcome === 'won' ? ' (after recovery)' : ''}.
-              </p>
-              <button class="primary" onClick={() => game.newFight((Math.random() * 2 ** 31) | 0)}>New fight</button>
-              <button onClick={() => game.newFight(seed)}>Retry same seed</button>
+          {combat && !busy && <OutcomeOverlay game={game} combat={combat} seed={seed} />}
+          {state.mode === 'dead' && !busy && (
+            <div class="overlay" data-testid="dead">
+              <h2>You have fallen.</h2>
+              <p>The world stays as it was. You don't.</p>
+              <button class="primary" onClick={() => game.newGame((Math.random() * 2 ** 31) | 0)}>New game</button>
             </div>
           )}
         </div>
-        <div class="turn-bar">
-          <p class="prompt" data-testid="prompt">{promptFor(state, busy)}</p>
-          {resolving && <button onClick={() => void game.dispatch({ type: 'skipEffect' })}>{skipLabel(state)}</button>}
-          {resolving && isOnExit(state) && <button class="primary" onClick={() => void game.dispatch({ type: 'flee' })}>Flee</button>}
-        </div>
-        <div class="hand">
-          {state.player.hand.map((id) => {
-            const card = state.cards[id] as CardInstance;
-            const isCommitted = state.committed?.cardId === id;
-            return (
-              <div class={isCommitted ? 'card-slot committed' : 'card-slot'} key={id}>
-                <CardView card={card} enabled={planning && game.canPlay(id)} onPlay={() => void game.dispatch({ type: 'playCard', cardId: id })} />
-              </div>
-            );
-          })}
-          <div class="basics">
-            {BASIC_ORDER.map((id) => {
-              const basic = state.basics[id];
-              return (
-                <button key={id} class="basic" disabled={!planning} data-basic={id} onClick={() => void game.dispatch({ type: 'useBasic', basic: id })}>
-                  <strong>{basic.name}</strong>
-                  <span>{basic.effects.map(describeEffect).join('; ')}</span>
-                  <span>Free, init {basic.initiative}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {combat
+          ? <CombatPanel game={game} combat={combat} busy={busy} />
+          : (
+            <div class="turn-bar">
+              <p class="prompt" data-testid="prompt">
+                {state.mode === 'explore' ? 'Arrow keys or WASD to walk, or click a tile next to you. Enemies attack when you enter their ground.' : ''}
+              </p>
+            </div>
+          )}
       </div>
 
       <aside class="side">
         <h1>Cardbearer</h1>
-        <div class="round">Round {state.round} <span class="seed">seed {seed}</span></div>
-        <Bar label="HP" value={player.hp} max={player.maxHp} kind="hp" />
-        <Bar label="Stamina" value={state.player.stamina} max={state.player.maxStamina} kind="stamina" />
-        <Bar label="Mana" value={state.player.mana} max={state.player.maxMana} kind="mana" />
-        <div class="status">
-          {player.shield > 0 && <span>Shield {player.shield}</span>}
-          {player.conditions.length > 0 && <span class="conditions">{player.conditions.join(', ')}</span>}
+        <div class="round">
+          {combat ? `Round ${combat.round}` : game.levelTitle} <span class="seed">seed {seed}</span>
         </div>
-        <div class="piles">
-          Deck {state.player.deck.length}, discard {state.player.discard.length}, modifiers {modifiers.draw.length} left
-        </div>
-
-        <p class="rule-note">Only up, down, left and right count as adjacent. A diagonal square is range 2. Each round you regain {state.rules.staminaRegenPerRound} stamina and {state.rules.manaRegenPerRound} mana.</p>
-
-        <h2>Turn order</h2>
-        {state.turnOrder.length === 0
-          ? <p class="hidden-intent">Set when you commit.</p>
-          : (
-            <ol class="turn-order">
-              {state.turnOrder.map((t, i) => {
-                const f = state.figures.find((x) => x.id === t.figureId);
-                if (!f || f.hp <= 0) return null;
-                return <li key={t.figureId} class={i === state.turnIndex ? 'active' : ''}>[{t.initiative}] {f.name}</li>;
-              })}
-            </ol>
-          )}
-
-        <h2>Enemies</h2>
-        <ul class="enemies">
-          {livingEnemies(state).map((e) => <EnemyRow key={e.id} enemy={e} state={state} />)}
-        </ul>
+        <Bar label="HP" value={hp} max={c.maxHp} kind="hp" />
+        <Bar label="Stamina" value={stamina} max={c.maxStamina} kind="stamina" />
+        <Bar label="Mana" value={mana} max={c.maxMana} kind="mana" />
+        {combat
+          ? <CombatSidebar combat={combat} />
+          : <div class="piles">Deck {c.deck.length} cards. Walking slowly restores stamina and mana.</div>}
 
         <h2>Log</h2>
         <div class="log" data-testid="log">

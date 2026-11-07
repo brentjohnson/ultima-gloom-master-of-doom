@@ -9,7 +9,7 @@ Commit to `main` unless asked to branch.
 ## Commands
 
 ```bash
-npm run dev          # Play the game. Add ?seed=4 to the URL to replay a fight setup
+npm run dev          # Play the game. ?seed=4 repeats a run, and ?fight=test opens the combat test arena
 npm run build
 npm run typecheck    # Checks the engine (no DOM types) and the app as separate projects
 npm run lint
@@ -47,9 +47,15 @@ applyAction(state, action) -> { state, events }
 - Self-targeted effects resolve automatically, and effects with no legal choice are skipped. `move` and `attack` actions only cover effects that need a decision.
 - Illegal actions throw `IllegalActionError`. Use `legalMoveTargets`, `legalAttackTargets` and `canPlayCard` to find out what's allowed.
 
+**Game layer (`src/engine/game.ts`).** `applyGameAction(state, action, world)` wraps combat with walking, encounters, level changes and the persistent `Character`. `WorldDef` is the fixed world, and `GameState` only records what changed (`tileChanges`, `clearedEncounters`). `mode` is `explore`, `combat` or `dead`. A finished fight stays in `combat` until `finishCombat` applies its result, which leaves room for an end-of-fight screen.
+
+Combat uses level coordinates throughout. Its grid covers only the encounter's area, offset by `originX` and `originY`, and anything outside counts as wall (`tileIndex` and `tileAt` in `grid.ts`). Terrain behavior lives in `TILE_PROPS`.
+
 **Content (`src/content`).** Cards, enemies and basic actions are JSON files validated by strict Zod schemas on load. Prefer adding a card as data. A new effect kind has to be added to `Effect` in `types.ts`, the schema, `settlePlayerEffects` and `describeEffect`.
 
-**Presentation.** `GameController` (`src/app/game.ts`) sends each action to the engine, plays the returned events one at a time through `ArenaView`, then syncs the view to the final state. `busy` is true during playback and blocks input.
+**Maps.** `maps/world.ldtk` is an LDtk project read by `src/content/ldtk.ts`. It uses a `Terrain` IntGrid layer (unpainted cells are walls) and an `Entities` layer with `PlayerStart`, `Encounter`, `Enemy`, `Exit` and `Transition`. Enemies and exits belong to whichever `Encounter` rectangle contains them. `validateWorld` lists every authoring problem, and a bad map throws at startup. `scripts/generate-world.mjs` wrote the first version and overwrites the file when run, so don't rerun it once the map has been edited in LDtk.
+
+**Presentation.** `GameController` (`src/app/game.ts`) sends each action to the engine, plays the returned events one at a time through `WorldView`, then shows the final `Scene`, which it builds from the state. `busy` is true during playback and blocks input.
 
 - `src/render` draws with PixiJS and contains no rules. Animate from `events` rather than comparing states.
 - `src/ui` is Preact and only reads the snapshot and dispatches actions. It offers only legal actions.

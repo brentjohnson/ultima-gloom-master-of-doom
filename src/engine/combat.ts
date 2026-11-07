@@ -1,4 +1,4 @@
-import { blinkTargets, distance, findPath, hasLineOfSight, livingFigures, pathTowardAttack, pushPath, reachableTiles, samePos, tileAt } from './grid';
+import { blinkTargets, distance, findPath, hasLineOfSight, livingFigures, pathTowardAttack, pushPath, reachableTiles, samePos, tileAt, tileIndex } from './grid';
 import { shuffleInPlace } from './rng';
 import { IllegalActionError } from './types';
 import type {
@@ -35,6 +35,8 @@ export interface CombatSetup {
 }
 
 export interface ArenaLayout {
+  originX: number;
+  originY: number;
   width: number;
   height: number;
   tiles: Tile[];
@@ -44,8 +46,8 @@ export interface ArenaLayout {
 }
 
 /**
- * ASCII arena legend: `#` wall, `.` floor, `~` water, `^` trap, `E` exit,
- * `@` player start, and any key of `enemyKeys` for an enemy on floor.
+ * ASCII arena legend: `#` wall, `.` floor, `,` grass, `T` tree, `~` water,
+ * `^` trap, `+` door, `E` exit, `@` player start, and any key of `enemyKeys` for an enemy on floor.
  */
 export function parseArena(rows: string[], enemyKeys: Record<string, string>): ArenaLayout {
   const width = rows[0]?.length ?? 0;
@@ -63,12 +65,15 @@ export function parseArena(rows: string[], enemyKeys: Record<string, string>): A
       if (ch === '#') tiles.push('wall');
       else if (ch === '~') tiles.push('water');
       else if (ch === '^') tiles.push('trap');
+      else if (ch === ',') tiles.push('grass');
+      else if (ch === 'T') tiles.push('tree');
+      else if (ch === '+') tiles.push('door');
       else if (ch === '.' || ch === 'E' || ch === '@' || enemyDefId) tiles.push('floor');
       else throw new Error(`Unknown arena character "${ch}" at ${x},${y}`);
     });
   });
   if (!playerStart) throw new Error('Arena has no player start');
-  return { width, height: rows.length, tiles, exits, playerStart, enemies };
+  return { originX: 0, originY: 0, width, height: rows.length, tiles, exits, playerStart, enemies };
 }
 
 export function createCombat(setup: CombatSetup): ApplyResult {
@@ -112,7 +117,8 @@ export function createCombat(setup: CombatSetup): ApplyResult {
   rng = shuffleInPlace(enemyMods, rng);
 
   const state: CombatState = {
-    rng, round: 0, width: setup.arena.width, height: setup.arena.height,
+    rng, round: 0, originX: setup.arena.originX, originY: setup.arena.originY,
+    width: setup.arena.width, height: setup.arena.height,
     tiles: [...setup.arena.tiles], exits: setup.arena.exits.map((p) => ({ ...p })), figures, cards,
     player: {
       stamina: setup.player.stamina, maxStamina: setup.player.maxStamina,
@@ -438,10 +444,13 @@ function moveAlong(state: CombatState, figure: Figure, path: Pos[], type: 'moved
   for (const step of path) {
     figure.pos = { ...step };
     if (tileAt(state, step) === 'trap') {
-      state.tiles[step.y * state.width + step.x] = 'floor';
+      state.tiles[tileIndex(state, step)] = 'floor';
       events.push({ type: 'trapSprung', pos: { ...step }, figureId: figure.id });
       applyDamage(figure, state.rules.trapDamage, 'trap', events, true);
       if (figure.hp <= 0) return;
+    } else if (tileAt(state, step) === 'door') {
+      state.tiles[tileIndex(state, step)] = 'openDoor';
+      events.push({ type: 'doorOpened', pos: { ...step } });
     }
   }
 }

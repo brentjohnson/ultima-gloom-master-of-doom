@@ -4,13 +4,12 @@
 
 ## Status
 
-Early prototype. There is one playable test fight, with no world, loot or saves yet. Combat is being playtested before the world gets built, and the sprites are placeholders.
+Early prototype, with no loot or saves yet, and the sprites and small test map are placeholders. So far you can:
 
-The test fight has:
-
-- Initiative-based turns, where you commit one card or basic action each round
-- Stamina and mana, with spell cards and free basic actions
-- An attack modifier deck, conditions, shields, pushes, traps and terrain
+- Walk a small overworld and a dark dungeon, with doors, traps and stairs
+- Fight in place when you enter enemy ground, and flee from marked exits
+- Commit one card or basic action each round, in initiative order
+- Spend stamina and mana on physical and spell cards, with an attack modifier deck, conditions, shields and pushes
 
 ## Run it
 
@@ -21,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Then open the URL it prints. Add `?seed=4` to the URL to replay the same fight setup.
+Then open the URL it prints. Add `?seed=4` to the URL to repeat a run, or `?fight=test` to go straight to the combat test arena.
 
 ## Development
 

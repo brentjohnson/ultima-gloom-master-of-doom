@@ -1,13 +1,21 @@
-import type { CombatState, Figure, Pos, Tile } from './types';
+import { TILE_PROPS } from './types';
+import type { CombatState, Figure, Pos, Tile, TileGrid } from './types';
 
 const NEIGHBORS: readonly Pos[] = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
 
 export const samePos = (a: Pos, b: Pos): boolean => a.x === b.x && a.y === b.y;
 export const distance = (a: Pos, b: Pos): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-export function tileAt(state: CombatState, p: Pos): Tile {
-  if (p.x < 0 || p.y < 0 || p.x >= state.width || p.y >= state.height) return 'wall';
-  return state.tiles[p.y * state.width + p.x] ?? 'wall';
+/** Index into `grid.tiles`, or -1 outside the grid. */
+export function tileIndex(grid: TileGrid, p: Pos): number {
+  const x = p.x - grid.originX;
+  const y = p.y - grid.originY;
+  return x < 0 || y < 0 || x >= grid.width || y >= grid.height ? -1 : y * grid.width + x;
+}
+
+/** Anything outside the grid counts as wall, which is what bounds a fight. */
+export function tileAt(grid: TileGrid, p: Pos): Tile {
+  return grid.tiles[tileIndex(grid, p)] ?? 'wall';
 }
 
 export const livingFigures = (state: CombatState): Figure[] => state.figures.filter((f) => f.hp > 0);
@@ -15,11 +23,10 @@ export const figureAt = (state: CombatState, p: Pos): Figure | undefined =>
   livingFigures(state).find((f) => samePos(f.pos, p));
 
 export function isStandable(state: CombatState, p: Pos): boolean {
-  const tile = tileAt(state, p);
-  return tile !== 'wall' && tile !== 'water' && !figureAt(state, p);
+  return TILE_PROPS[tileAt(state, p)].walkable && !figureAt(state, p);
 }
 
-function bresenhamClear(state: CombatState, a: Pos, b: Pos): boolean {
+function bresenhamClear(grid: TileGrid, a: Pos, b: Pos): boolean {
   let { x, y } = a;
   const dx = Math.abs(b.x - a.x);
   const dy = -Math.abs(b.y - a.y);
@@ -30,18 +37,18 @@ function bresenhamClear(state: CombatState, a: Pos, b: Pos): boolean {
     const e2 = 2 * err;
     if (e2 >= dy) { err += dy; x += sx; }
     if (e2 <= dx) { err += dx; y += sy; }
-    if ((x !== b.x || y !== b.y) && tileAt(state, { x, y }) === 'wall') return false;
+    if ((x !== b.x || y !== b.y) && TILE_PROPS[tileAt(grid, { x, y })].blocksSight) return false;
   }
   return true;
 }
 
-/** Only walls block sight. Checked both ways so sight is always symmetric. */
-export const hasLineOfSight = (state: CombatState, a: Pos, b: Pos): boolean =>
-  bresenhamClear(state, a, b) || bresenhamClear(state, b, a);
+/** Checked both ways so sight is always symmetric. */
+export const hasLineOfSight = (grid: TileGrid, a: Pos, b: Pos): boolean =>
+  bresenhamClear(grid, a, b) || bresenhamClear(grid, b, a);
 
 /** Distances from `from` over standable tiles, up to `maxSteps`. */
 function floodDistances(state: CombatState, from: Pos, maxSteps: number, avoidTraps: boolean) {
-  const key = (p: Pos) => p.y * state.width + p.x;
+  const key = (p: Pos) => p.y * 100_000 + p.x;
   const parents = new Map<number, Pos | null>([[key(from), null]]);
   const dist = new Map<number, number>([[key(from), 0]]);
   const queue: Pos[] = [from];
@@ -84,8 +91,8 @@ export function reachableTiles(state: CombatState, from: Pos, range: number): Po
 /** Tiles a blink can land on: standable, in range and in sight. */
 export function blinkTargets(state: CombatState, from: Pos, range: number): Pos[] {
   const targets: Pos[] = [];
-  for (let y = 0; y < state.height; y++) {
-    for (let x = 0; x < state.width; x++) {
+  for (let y = state.originY; y < state.originY + state.height; y++) {
+    for (let x = state.originX; x < state.originX + state.width; x++) {
       const p = { x, y };
       if (!samePos(p, from) && distance(p, from) <= range && isStandable(state, p) && hasLineOfSight(state, from, p)) targets.push(p);
     }

@@ -1,6 +1,27 @@
 export interface Pos { x: number; y: number }
 
-export type Tile = 'floor' | 'wall' | 'water' | 'trap';
+export type Tile = 'floor' | 'grass' | 'wall' | 'tree' | 'water' | 'trap' | 'door' | 'openDoor';
+
+/** What each kind of terrain does. Everything else about a tile is presentation. */
+export const TILE_PROPS: Record<Tile, { walkable: boolean; blocksSight: boolean }> = {
+  floor: { walkable: true, blocksSight: false },
+  grass: { walkable: true, blocksSight: false },
+  wall: { walkable: false, blocksSight: true },
+  tree: { walkable: false, blocksSight: true },
+  water: { walkable: false, blocksSight: false },
+  trap: { walkable: true, blocksSight: false },
+  door: { walkable: true, blocksSight: true },
+  openDoor: { walkable: true, blocksSight: false },
+};
+
+/** A rectangle of tiles addressed in level coordinates. */
+export interface TileGrid {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  tiles: Tile[];
+}
 export type Condition = 'bleed' | 'stun' | 'root' | 'weak';
 export type Faction = 'player' | 'enemy';
 
@@ -98,13 +119,10 @@ export interface RulesConfig {
   bleedDamage: number;
 }
 
-export interface CombatState {
+/** All positions are level coordinates; the grid covers only the fight's area. */
+export interface CombatState extends TileGrid {
   rng: number;
   round: number;
-  width: number;
-  height: number;
-  /** Row-major tile grid; sprung traps become floor. */
-  tiles: Tile[];
   /** Tiles the player may flee from. */
   exits: Pos[];
   figures: Figure[];
@@ -144,6 +162,7 @@ export type GameEvent =
   | { type: 'attacked'; attackerId: string; targetId: string; base: number; modifier: Modifier; total: number }
   | { type: 'damaged'; figureId: string; amount: number; blocked: number; hp: number; source: 'attack' | 'bleed' | 'trap' }
   | { type: 'trapSprung'; pos: Pos; figureId: string }
+  | { type: 'doorOpened'; pos: Pos }
   | { type: 'conditionApplied'; figureId: string; condition: Condition }
   | { type: 'conditionEnded'; figureId: string; condition: Condition }
   | { type: 'healed'; figureId: string; amount: number; hp: number }

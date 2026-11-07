@@ -6,7 +6,7 @@
 
 **Goal:** a complete, replayable slice with one town, one stretch of wilderness and one dungeon, proving the full loop of explore, fight, loot, grow and push further. Combat gets a playtest gate before any world is built, since the game depends on it. Later regions are planned only after the slice has been played.
 
-**Current status:** Milestones 0-2.5 are built, and combat is at the playtest gate.
+**Current status:** Milestones 0-3 are built. The combat playtest gate passed on orthogonal-only adjacency. Milestone 4 is next.
 
 ## Technical decisions
 
@@ -65,9 +65,9 @@ Each milestone ends with something playable or testable.
    - Add the Spark basic action, and rename Struggle: Move and Struggle: Attack to Move and Attack.
    - Add 3-4 test spell cards, with the new effects they need (such as area attacks and blink movement).
    - Show a mana bar and each card's cost type in the UI. Explain the orthogonal adjacency rule there too.
-   - **Playtest gate (covers Milestones 2 and 2.5):** play several fights and tune the rules. If it isn't fun, change the rules before building more. Settle the combat questions in `game-design.md`: diagonal adjacency, hidden enemy plans, modifier swing and post-fight recovery.
+   - **Playtest gate (covers Milestones 2 and 2.5):** passed. Adjacency stays orthogonal-only. `game-design.md` keeps the remaining tuning questions.
 
-3. **World.** Add an LDtk import with a validation step, tile-by-tile movement, a camera, terrain properties, doors, traps, a darker dungeon view, and the seamless switch into combat in place. Add stamina and mana regen per step, and carry the character between fights.
+3. **World.** Done. Add an LDtk import with a validation step, tile-by-tile movement, a camera, terrain properties, doors, traps, a darker dungeon view, and the seamless switch into combat in place. Add stamina and mana regen per step, and carry the character between fights.
 4. **Loot and decks.** Add rarities, affix rolling, zone loot tables, drops, a collection screen and the deck builder.
 5. **Leveling.** Add danger-weighted XP from enemies, rising level thresholds and a level-up screen where you grow one pool and upgrade one basic action. Decide what each upgrade improves, and whether a level cap is needed. Add the "two levels above your lowest" rule only if playtesting calls for it.
 6. **Persistence and stakes.** Add rest points that refill all pools, zone resets with claimed uniques kept, versioned `localStorage` saves with file export and import, the death penalty and Hardcore mode.

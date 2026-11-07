@@ -70,14 +70,21 @@ Attack does more than Spark so that closing to melee is still worth it.
 **Shields (Built):** block attack damage until the end of the round, but not bleed or trap damage.
 
 **Terrain (Built)**
-- **Walls** block movement and sight.
+- **Walls and trees** block movement and sight.
 - **Water** blocks movement but not sight.
-- **Traps** deal 2 damage once to whoever enters, including pushed enemies.
+- **Floor and grass** block nothing.
+- **Doors** block sight until someone walks through, then stay open.
+- **Traps** deal 2 damage once to whoever enters, including pushed enemies and a player who is just walking.
+
+Sprung traps and opened doors stay that way after a fight.
 
 **Encounters**
-- Fleeing from a marked exit ends the fight with no stamina recovery (Built).
-- Enemies stand visibly where they were placed, and entering an authored aggro area starts the fight, which is limited to that area (Planned).
-- After fleeing, the enemies reset (Planned).
+All of this is built.
+- Enemies stand visibly where they were placed. Entering an encounter's area starts the fight in place, and it can't leave that area.
+- Exit tiles inside the area never start the fight, so you can approach along them and retreat to them.
+- Fleeing from an exit ends the fight with no stamina recovery. The enemies go back to their places, and you keep any damage.
+- Beating an encounter clears it, for now permanently. Zone resets arrive with rests.
+- A fight's area must fit on one screen (14x10 tiles).
 
 ---
 
@@ -91,7 +98,8 @@ Attack does more than Spark so that closing to melee is still worth it.
 
 **Regen:** stamina and mana both regenerate slowly, which keeps a hand full of spells from being dead for long.
 - During combat, each pool gains 1 per round, starting with round 2 (Built).
-- While walking (Planned, with the world). Rates will be tuned in playtesting.
+- While walking, each pool gains 1 every 4 steps (Built). Health doesn't regenerate.
+- Rates will be tuned in playtesting.
 
 **Recovery**
 - A rest fully refills all pools (Planned).
@@ -125,6 +133,8 @@ Attack does more than Spark so that closing to melee is still worth it.
 
 - A hand-authored overworld, Ultima III-style, with towns, wilderness and dungeons fixed in place and difficulty.
 - Dungeons use the same overhead view, only tighter, darker and denser with traps and puzzles.
+- In a dark level you can see 5 tiles, and walls block your view. Enemies you can't see aren't shown. Fights light up their whole area (Built).
+- You walk one tile at a time in the four orthogonal directions (Built).
 - Danger is shown through terrain, monster visuals, NPC warnings and ruined equipment, never a level number over an enemy's head.
 - An early "safe ring" surrounds the starting town, and regions get rougher farther out or off the beaten path.
 - Resting resets zones: enemies return to their hand-placed spots, so drops can be farmed while danger stays fixed. Unique bosses and treasure stay claimed.
@@ -133,7 +143,7 @@ Attack does more than Spark so that closing to melee is still worth it.
 
 ## Stakes & Modes
 
-- **Standard mode:** on death, lose 25% of carried gold and return to the last rest. The character and deck persist.
+- **Standard mode:** on death, lose 25% of carried gold and return to the last rest. The character and deck persist. (Planned. For now, death means starting a new game.)
 - **Hardcore mode:** permadeath. The save is deleted on death.
 
 ---
@@ -141,9 +151,7 @@ Attack does more than Spark so that closing to melee is still worth it.
 ## Open Questions
 
 **To settle in playtesting**
-- **Diagonal adjacency:** the current rule is orthogonal-only, but the expectation from Ultima and Tunnels of Doom is that diagonals are adjacent. Switching would need a rebalance, since all-adjacent attacks could reach 8 enemies.
-- **Hidden enemy plans:** does committing blind feel fair?
-- **Modifier swing:** do x2 and null add tension, or undo good positioning?
+- **Hidden enemy plans and modifier swing:** the first combat playtest was fine with both, but revisit them once real encounters exist.
 - **Regen rates and pool sizes**, including how much a level adds to a pool. With regen, stamina may be too plentiful within a single fight.
 - **Post-fight recovery:** does the 25% stamina recovery still earn its place now that walking regens stamina? If it stays, should it cover mana too?
 

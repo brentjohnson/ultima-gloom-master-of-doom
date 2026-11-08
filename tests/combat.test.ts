@@ -325,7 +325,7 @@ describe('enemy behavior', () => {
   });
 
   it('cannot shoot through walls', () => {
-    const archer = { id: 'biter', name: 'Archer', hp: 5, behaviors: [{ name: 'Shot', initiative: 10, effects: [{ kind: 'attack' as const, damage: 3, range: 9 }] }] };
+    const archer = { id: 'biter', name: 'Archer', hp: 5, xp: 1, behaviors: [{ name: 'Shot', initiative: 10, effects: [{ kind: 'attack' as const, damage: 3, range: 9 }] }] };
     const start = withHand(['@#b'], fullDeck(step3, strike), [archer]);
     const { state } = step(start, { type: 'useBasic', basic: 'catchBreath' });
     expect(getPlayer(state).hp).toBe(20);

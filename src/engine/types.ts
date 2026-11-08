@@ -65,6 +65,8 @@ export interface EnemyDef {
   id: string;
   name: string;
   hp: number;
+  /** Awarded for each one killed in a won fight. Reflects how dangerous it is, never the player's level. */
+  xp: number;
   behaviors: EnemyBehavior[];
 }
 

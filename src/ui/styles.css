@@ -43,6 +43,12 @@ h2 { font-size: 11px; margin: 12px 0 4px; color: #8a93ab; text-transform: upperc
 .deck-screen { position: fixed; inset: 0; z-index: 10; overflow-y: auto; padding: 16px 24px; background: #0d0e12; }
 .deck-head { display: flex; gap: 16px; align-items: center; }
 .deck-rule { flex: 1; color: #8a93ab; }
+.choice-row { display: flex; gap: 8px; margin: 4px 0 12px; }
+.choice.chosen, .choice.chosen:hover:not(:disabled) { background: #4a5a2f; border-color: #f2d94e; color: #f4e9c1; }
+.upgrade-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.upgrade-column { display: flex; flex-direction: column; gap: 6px; }
+.upgrade-now { color: #8a93ab; font-size: 11px; }
+.level-line { color: #f2d94e; margin-bottom: 4px; }
 .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
 
 .side { width: 320px; flex-shrink: 0; }

@@ -228,6 +228,7 @@ test('walks the world, wins a fight in place, and goes underground', async ({ pa
   await expect(layout).toHaveAttribute('data-phase', 'ended');
   await expect(page.getByTestId('outcome')).toContainText('Victory');
   await expect(page.getByTestId('loot').locator('.card')).toHaveCount(1);
+  await expect(page.getByTestId('xp')).toHaveText('+4 XP');
   await expect(page.getByTestId('log')).toContainText('You find');
   await page.screenshot({ path: 'test-results/loot.png' });
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -286,5 +287,45 @@ test('walks the world, wins a fight in place, and goes underground', async ({ pa
   await expect(layout).toHaveAttribute('data-level', 'Crypt');
   await expect(page.getByTestId('log')).toContainText('The Sunken Crypt');
   await page.screenshot({ path: 'test-results/crypt.png' });
+  expect(errors).toEqual([]);
+});
+
+test('earning a level asks for a pool and a basic action upgrade before walking on', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/?seed=2');
+  await expect(page.locator('.arena canvas')).toBeVisible();
+  await expect(page.getByTestId('level')).toHaveText('Level 1, 0/8 XP');
+
+  // Grant the XP directly; earning it in a fight is covered by the engine tests.
+  await page.evaluate(() => {
+    const g = (window as unknown as { __game: GameController }).__game;
+    g.snapshot.state.character.xp = 8;
+    g.setDeckOpen(false);
+  });
+  const screen = page.getByTestId('level-up');
+  await expect(screen).toBeVisible();
+  const pos = () => page.evaluate(() => (window as unknown as { __game: GameController }).__game.playerPos);
+  const before = await pos();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(50);
+  expect(await pos()).toEqual(before);
+
+  const confirm = page.getByRole('button', { name: 'Confirm level 2' });
+  await expect(confirm).toBeDisabled();
+  await page.locator('[data-pool="hp"]').click();
+  await expect(confirm).toBeDisabled();
+  await screen.getByRole('button', { name: 'range 3 to 4' }).click();
+  await page.screenshot({ path: 'test-results/level-up.png' });
+  await confirm.click();
+  await idle(page);
+
+  await expect(screen).toHaveCount(0);
+  await expect(page.getByTestId('level')).toHaveText('Level 2, 8/20 XP');
+  await expect(page.locator('[data-stat="hp"] .bar-value')).toHaveText('24/24');
+  await expect(page.getByTestId('log')).toContainText('You reach level 2: Health +4, Spark: range 3 to 4.');
+  await page.keyboard.press('ArrowRight');
+  await idle(page);
+  expect(await pos()).not.toEqual(before);
   expect(errors).toEqual([]);
 });

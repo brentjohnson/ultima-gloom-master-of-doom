@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AFFIXES, BASICS, CARDS, ENEMIES, loadWorld, LOOT, newTestFight, STARTER_DECK, TEST_WORLD, WORLD } from '../src/content';
+import { AFFIXES, BASICS, CARDS, ENEMIES, LEVELS, loadWorld, LOOT, newTestFight, STARTER_DECK, TEST_WORLD, WORLD } from '../src/content';
 import { loadLdtkProject } from '../src/content/ldtk';
 import { validateWorld } from '../src/content/validateWorld';
 import { applyAction, applyGameAction, currentGrid, DEFAULT_WORLD_RULES, IllegalActionError, newGame, parseArena } from '../src/engine';
@@ -18,7 +18,7 @@ function makeWorld(rows: string[], encounters: LevelDef['encounters'] = [], dark
     },
     start: { levelId: 'a', pos: layout.playerStart },
     character: { hp: 20, maxHp: 20, stamina: 10, maxStamina: 20, mana: 5, maxMana: 10, deck: STARTER_DECK.map((c) => c.id) },
-    cards: CARDS, affixes: AFFIXES, loot: LOOT, enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
+    cards: CARDS, affixes: AFFIXES, loot: LOOT, progression: LEVELS, enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
   };
 }
 
@@ -190,7 +190,8 @@ describe('encounters', () => {
     expect(ended.combat?.phase).toEqual({ kind: 'ended', outcome: 'won' });
     const combat = ended.combat as NonNullable<GameState['combat']>;
     const { state, events } = applyGameAction(ended, { type: 'finishCombat' }, world);
-    expect(events).toEqual([{ type: 'combatFinished', outcome: 'won' }]);
+    expect(events[0]).toEqual({ type: 'combatFinished', outcome: 'won' });
+    expect(events[1]).toMatchObject({ type: 'xpGained', amount: 4 });
     expect(state.mode).toBe('explore');
     expect(state.combat).toBeNull();
     expect(state.clearedEncounters).toEqual(['enc']);

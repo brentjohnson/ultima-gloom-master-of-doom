@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AffixDef, AffixMod, BasicDef, BasicId, CardDef, EnemyDef, Effect, LootData } from '../engine';
+import type { AffixDef, AffixMod, BasicDef, BasicId, CardDef, EnemyDef, Effect, LevelRules, LootData } from '../engine';
 
 const condition = z.enum(['bleed', 'stun', 'root', 'weak']);
 
@@ -36,6 +36,7 @@ export const enemySchema: z.ZodType<EnemyDef> = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
   hp: z.number().int().positive(),
+  xp: z.number().int().nonnegative(),
   behaviors: z.array(z.strictObject({ name: z.string().min(1), initiative, effects: z.array(effect).min(1) })).min(1),
 });
 
@@ -117,6 +118,15 @@ export function loadLoot(raw: unknown, cards: Map<string, CardDef>): LootData {
   if (errors.length > 0) throw new Error(`The loot tables have problems:\n- ${errors.join('\n- ')}`);
   return loot;
 }
+
+const levelSchema: z.ZodType<LevelRules> = z.strictObject({
+  thresholds: z.array(z.number().int().positive()).min(1)
+    .refine((t) => t.every((v, i) => i === 0 || v > (t[i - 1] as number)), 'thresholds must rise'),
+  poolGrowth: z.strictObject({ hp: z.number().int().positive(), stamina: z.number().int().positive(), mana: z.number().int().positive() }),
+  initiativeStep: z.number().int().positive(),
+});
+
+export const loadLevels = (raw: unknown): LevelRules => levelSchema.parse(raw);
 
 export function loadEnemies(raw: unknown): Map<string, EnemyDef> {
   return uniqueById('enemy', z.array(enemySchema).parse(raw));

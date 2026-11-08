@@ -1,12 +1,15 @@
 import {
-  applyGameAction, canPlayCard, currentEffect, currentGrid, getPlayer, IllegalActionError, legalAttackTargets,
-  legalMoveTargets, liveEncounters, newGame, PLAYER_ID, resolveCard, samePos,
+  applyGameAction, basicUpgradeOptions, canPlayCard, characterBasics, currentEffect, currentGrid, getPlayer, IllegalActionError,
+  legalAttackTargets, legalMoveTargets, liveEncounters, newGame, nextThreshold, pendingLevelUps, PLAYER_ID, resolveCard, samePos,
 } from '../engine';
-import type { Action, AnyEvent, CardDef, CombatState, Direction, GameAction, GameState, OwnedCard, Pos, WorldDef, WorldRules } from '../engine';
+import type {
+  Action, AnyEvent, BasicDef, BasicId, BasicUpgrade, CardDef, CombatState, Direction, GameAction, GameState, LevelRules, OwnedCard,
+  Pos, WorldDef, WorldRules,
+} from '../engine';
 import { newTestFight, TEST_WORLD, WORLD } from '../content';
 import type { FigureInfo, Scene, WorldView } from '../render/worldView';
 import type { SpriteName } from '../render/sprites';
-import { logLine } from '../ui/text';
+import { describeUpgrade, logLine, POOL_NAMES } from '../ui/text';
 
 const LOG_LIMIT = 200;
 
@@ -63,6 +66,12 @@ export class GameController {
     if (event.type === 'doorOpened') return 'A door creaks open.';
     if (event.type === 'stepped' || event.type === 'combatFinished') return null;
     if (event.type === 'cardFound') return `You find ${this.cardTitle(event.card)}.`;
+    if (event.type === 'xpGained') {
+      return `You gain ${event.amount} XP.${event.levelsEarned > 0 ? ' You have earned a level!' : ''}`;
+    }
+    if (event.type === 'leveledUp') {
+      return `You reach level ${event.level}: ${POOL_NAMES[event.pool]} +${event.growth}, ${this.upgradeText(event.upgrade, state)}.`;
+    }
     return logLine(event, (id) => this.nameOf(state, id));
   }
 
@@ -80,9 +89,41 @@ export class GameController {
     return this.world.rules;
   }
 
+  get progression(): LevelRules {
+    return this.world.progression;
+  }
+
+  /** The character's basic actions with their upgrades. */
+  get basics(): Record<BasicId, BasicDef> {
+    return characterBasics(this.snapshot.state.character, this.world);
+  }
+
+  enemyXp(defId: string): number {
+    return this.world.enemies.find((e) => e.id === defId)?.xp ?? 0;
+  }
+
+  get levelUpsPending(): number {
+    return pendingLevelUps(this.snapshot.state.character, this.world);
+  }
+
+  get upgradeOptions(): BasicUpgrade[] {
+    return basicUpgradeOptions(this.basics, this.world.progression);
+  }
+
+  /** XP needed for the next level, or null at the cap. */
+  get nextLevelXp(): number | null {
+    return nextThreshold(this.snapshot.state.character.level, this.world.progression);
+  }
+
+  /** Describes an upgrade against the basics as they were before it, for the log. */
+  private upgradeText(upgrade: BasicUpgrade, state: GameState): string {
+    const before = { ...state.character, basicUpgrades: state.character.basicUpgrades.slice(0, -1) };
+    return describeUpgrade(upgrade, characterBasics(before, this.world), this.world.progression.initiativeStep);
+  }
+
   setDeckOpen(open: boolean): void {
     const { state, busy } = this.snapshot;
-    if (open && (busy || state.mode !== 'explore')) return;
+    if (open && (busy || state.mode !== 'explore' || this.levelUpsPending > 0)) return;
     this.update({ deckOpen: open });
   }
 

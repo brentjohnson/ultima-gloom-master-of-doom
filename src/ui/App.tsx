@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { currentEffect, getPlayer, isOnExit, livingEnemies } from '../engine';
-import type { BasicId, CardDef, CardInstance, CombatState, Figure, GameState, OwnedCard } from '../engine';
+import type { BasicId, BasicUpgrade, CardDef, CardInstance, CombatState, Figure, GameState, OwnedCard, Pool } from '../engine';
 import { RARITY_ORDER } from '../engine';
 import type { GameController } from '../app/game';
-import { describeEffect } from './text';
+import { describeEffect, describeUpgrade, POOL_NAMES } from './text';
 
 function useSnapshot(game: GameController) {
   const [, force] = useState(0);
@@ -62,6 +62,61 @@ function sortCards(cards: OwnedCard[], game: GameController): { owned: OwnedCard
   return cards
     .map((owned) => ({ owned, card: game.resolve(owned) }))
     .sort((a, b) => RARITY_ORDER.indexOf(b.owned.rarity) - RARITY_ORDER.indexOf(a.owned.rarity) || a.card.name.localeCompare(b.card.name));
+}
+
+const POOLS: Pool[] = ['hp', 'stamina', 'mana'];
+const POOL_MAX = { hp: 'maxHp', stamina: 'maxStamina', mana: 'maxMana' } as const;
+
+function LevelUpScreen({ game, state }: { game: GameController; state: GameState }) {
+  const [pool, setPool] = useState<Pool | null>(null);
+  const [upgrade, setUpgrade] = useState<BasicUpgrade | null>(null);
+  const c = state.character;
+  const { poolGrowth, initiativeStep } = game.progression;
+  const basics = game.basics;
+  const options = game.upgradeOptions;
+  const confirm = () => {
+    if (!pool || !upgrade) return;
+    setPool(null);
+    setUpgrade(null);
+    void game.dispatch({ type: 'levelUp', pool, upgrade });
+  };
+  return (
+    <div class="deck-screen level-up" data-testid="level-up">
+      <div class="deck-head">
+        <h1>Level {c.level + 1}</h1>
+        <span class="deck-rule">Choose one pool to grow and one basic action to upgrade. Upgrades never change cards.</span>
+      </div>
+      <h2>Grow a pool</h2>
+      <div class="choice-row">
+        {POOLS.map((p) => (
+          <button key={p} class={pool === p ? 'choice chosen' : 'choice'} aria-pressed={pool === p} data-pool={p} onClick={() => setPool(p)}>
+            {POOL_NAMES[p]} +{poolGrowth[p]} ({c[POOL_MAX[p]]} to {c[POOL_MAX[p]] + poolGrowth[p]})
+          </button>
+        ))}
+      </div>
+      <h2>Upgrade a basic action: +1 to one number, or {initiativeStep} faster</h2>
+      <div class="upgrade-grid">
+        {(['move', 'attack', 'spark', 'catchBreath'] as BasicId[]).map((basic) => (
+          <div key={basic} class="upgrade-column">
+            <strong>{basics[basic].name}</strong>
+            <span class="upgrade-now">{basics[basic].effects.map(describeEffect).join('; ')}, init {basics[basic].initiative}</span>
+            {options.filter((o) => o.basic === basic).map((o) => {
+              const label = describeUpgrade(o, basics, initiativeStep);
+              const chosen = upgrade !== null && JSON.stringify(upgrade) === JSON.stringify(o);
+              return (
+                <button key={label} class={chosen ? 'choice chosen' : 'choice'} aria-pressed={chosen} onClick={() => setUpgrade(o)}>
+                  {label.slice(label.indexOf(':') + 2)}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div class="choice-row">
+        <button class="primary" disabled={!pool || !upgrade} onClick={confirm}>Confirm level {c.level + 1}</button>
+      </div>
+    </div>
+  );
 }
 
 function DeckScreen({ game, state }: { game: GameController; state: GameState }) {
@@ -138,6 +193,11 @@ function EnemyRow({ enemy, state }: { enemy: Figure; state: CombatState }) {
   );
 }
 
+/** XP the fight will pay when its screen closes. */
+const xpFor = (game: GameController, combat: CombatState): number => game.testFight
+  ? 0
+  : combat.figures.filter((f) => f.faction === 'enemy' && f.hp <= 0).reduce((sum, f) => sum + game.enemyXp(f.defId), 0);
+
 const OUTCOME_TEXT = { won: 'Victory!', lost: 'You have fallen.', fled: 'You escaped.' } as const;
 
 function OutcomeOverlay({ game, combat, seed, loot }: { game: GameController; combat: CombatState; seed: number; loot: OwnedCard[] }) {
@@ -152,6 +212,7 @@ function OutcomeOverlay({ game, combat, seed, loot }: { game: GameController; co
         Round {combat.round}: {player.hp}/{player.maxHp} HP, {combat.player.stamina}/{combat.player.maxStamina} stamina,
         {' '}{combat.player.mana}/{combat.player.maxMana} mana{outcome === 'won' ? ' (after recovery)' : ''}.
       </p>
+      {outcome === 'won' && xpFor(game, combat) > 0 && <p data-testid="xp">+{xpFor(game, combat)} XP</p>}
       <LootList game={game} loot={loot} />
       {game.testFight
         ? (
@@ -287,6 +348,9 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         <div class="round">
           {combat ? `Round ${combat.round}` : game.levelTitle} <span class="seed">seed {seed}</span>
         </div>
+        <div class="level-line" data-testid="level">
+          Level {c.level}, {game.nextLevelXp === null ? `${c.xp} XP (highest level)` : `${c.xp}/${game.nextLevelXp} XP`}
+        </div>
         <Bar label="HP" value={hp} max={c.maxHp} kind="hp" />
         <Bar label="Stamina" value={stamina} max={c.maxStamina} kind="stamina" />
         <Bar label="Mana" value={mana} max={c.maxMana} kind="mana" />
@@ -301,6 +365,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         </div>
       </aside>
       {deckOpen && <DeckScreen game={game} state={state} />}
+      {state.mode === 'explore' && !busy && game.levelUpsPending > 0 && <LevelUpScreen game={game} state={state} />}
     </div>
   );
 }

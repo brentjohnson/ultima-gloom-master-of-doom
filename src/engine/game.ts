@@ -2,6 +2,8 @@ import { applyAction, createCombat, DEFAULT_RULES, getPlayer, PLAYER_ID } from '
 import { samePos, tileAt } from './grid';
 import { resolveCard, rollDrop } from './loot';
 import type { AffixDef, LootData, OwnedCard } from './loot';
+import { basicUpgradeOptions, levelForXp, sameUpgrade, upgradedBasics } from './progression';
+import type { BasicUpgrade, LevelRules, Pool } from './progression';
 import { nextRandom } from './rng';
 import { IllegalActionError, TILE_PROPS } from './types';
 import type {
@@ -45,10 +47,15 @@ export interface Character {
   collection: OwnedCard[];
   /** Uids from the collection. */
   deck: string[];
+  /** Levels taken. XP can be ahead of this until the level-up choices are made. */
+  level: number;
+  xp: number;
+  /** Every basic action upgrade taken, in order. */
+  basicUpgrades: BasicUpgrade[];
 }
 
 /** A new character. `deck` lists card definition ids, each of which becomes a plain owned copy. */
-export type StartingCharacter = Omit<Character, 'collection'>;
+export type StartingCharacter = Omit<Character, 'collection' | 'level' | 'xp' | 'basicUpgrades'>;
 
 export interface WorldRules {
   /** Walking this many steps regenerates the amounts below. */
@@ -69,6 +76,7 @@ export interface WorldDef {
   cards: Map<string, CardDef>;
   affixes: Map<string, AffixDef>;
   loot: LootData;
+  progression: LevelRules;
   enemies: EnemyDef[];
   basics: Record<BasicId, BasicDef>;
   rules: WorldRules;
@@ -101,14 +109,18 @@ export type GameAction =
   | { type: 'finishCombat' }
   /** Deck editing, allowed whenever you aren't in a fight. */
   | { type: 'addToDeck'; uid: string }
-  | { type: 'removeFromDeck'; uid: string };
+  | { type: 'removeFromDeck'; uid: string }
+  /** Takes one earned level: grow one pool and upgrade one basic action. */
+  | { type: 'levelUp'; pool: Pool; upgrade: BasicUpgrade };
 
 export type WorldEvent =
   | { type: 'stepped'; from: Pos; to: Pos }
   | { type: 'levelChanged'; levelId: string; pos: Pos }
   | { type: 'encounterStarted'; encounterId: string }
   | { type: 'combatFinished'; outcome: Outcome }
-  | { type: 'cardFound'; card: OwnedCard };
+  | { type: 'cardFound'; card: OwnedCard }
+  | { type: 'xpGained'; amount: number; xp: number; levelsEarned: number }
+  | { type: 'leveledUp'; level: number; pool: Pool; growth: number; upgrade: BasicUpgrade };
 
 export type AnyEvent = GameEvent | WorldEvent;
 export interface GameResult { state: GameState; events: AnyEvent[] }
@@ -124,7 +136,7 @@ export function newGame(world: WorldDef, seed: number): GameState {
   const collection: OwnedCard[] = world.character.deck.map((defId, i) => ({ uid: `card-${i}`, defId, rarity: 'plain', affixes: [] }));
   return {
     rng: seed | 0,
-    character: { ...world.character, collection, deck: collection.map((card) => card.uid) },
+    character: { ...world.character, collection, deck: collection.map((card) => card.uid), level: 1, xp: 0, basicUpgrades: [] },
     levelId: world.start.levelId,
     pos: { ...world.start.pos },
     steps: 0,
@@ -181,6 +193,8 @@ export function applyGameAction(previous: GameState, action: GameAction, world: 
       return addToDeck(previous, action.uid, world);
     case 'removeFromDeck':
       return removeFromDeck(previous, action.uid, world);
+    case 'levelUp':
+      return levelUp(previous, action.pool, action.upgrade, world);
   }
 }
 
@@ -199,6 +213,27 @@ function rollLoot(previous: GameState, world: WorldDef, events: AnyEvent[]): Gam
     events.push({ type: 'cardFound', card: drop.card });
   }
   return { ...previous, rng, nextCardNumber, pendingLoot };
+}
+
+/** Levels earned but not yet taken. Walking waits until they are. */
+export const pendingLevelUps = (c: Character, world: WorldDef): number => levelForXp(c.xp, world.progression) - c.level;
+
+/** The basic actions as this character has upgraded them. */
+export const characterBasics = (c: Character, world: WorldDef) => upgradedBasics(world.basics, c.basicUpgrades, world.progression);
+
+const POOL_MAX = { hp: 'maxHp', stamina: 'maxStamina', mana: 'maxMana' } as const;
+
+function levelUp(previous: GameState, pool: Pool, upgrade: BasicUpgrade, world: WorldDef): GameResult {
+  if (previous.mode !== 'explore') throw new IllegalActionError('levelUp: not now');
+  if (pendingLevelUps(previous.character, world) <= 0) throw new IllegalActionError('levelUp: no level earned');
+  const options = basicUpgradeOptions(characterBasics(previous.character, world), world.progression);
+  if (!options.some((o) => sameUpgrade(o, upgrade))) throw new IllegalActionError('levelUp: that upgrade is not available');
+  const growth = world.progression.poolGrowth[pool];
+  const c = { ...previous.character, basicUpgrades: [...previous.character.basicUpgrades, upgrade], level: previous.character.level + 1 };
+  // Growing a pool raises its current value too, so the new capacity is usable at once.
+  c[POOL_MAX[pool]] += growth;
+  c[pool] += growth;
+  return { state: { ...previous, character: c }, events: [{ type: 'leveledUp', level: c.level, pool, growth, upgrade }] };
 }
 
 function editableCharacter(state: GameState): Character {
@@ -223,6 +258,7 @@ function removeFromDeck(previous: GameState, uid: string, world: WorldDef): Game
 
 function step(previous: GameState, direction: Direction, world: WorldDef): GameResult {
   if (previous.mode !== 'explore') throw new IllegalActionError('step: not exploring');
+  if (pendingLevelUps(previous.character, world) > 0) throw new IllegalActionError('step: choose your level-up first');
   const delta = DELTAS[direction];
   const to = { x: previous.pos.x + delta.x, y: previous.pos.y + delta.y };
   const grid = currentGrid(previous, world);
@@ -313,7 +349,7 @@ export function startEncounter(state: GameState, encounter: EncounterDef, world:
     },
     deck,
     enemyDefs: world.enemies,
-    basics: world.basics,
+    basics: characterBasics(c, world),
     player: { hp: c.hp, maxHp: c.maxHp, stamina: c.stamina, maxStamina: c.maxStamina, mana: c.mana, maxMana: c.maxMana },
   });
   state.mode = 'combat';
@@ -346,11 +382,22 @@ function finishCombat(previous: GameState, world: WorldDef): GameResult {
     if (before.tiles[index] !== tile) setTileChange(state, index, tile);
   });
 
-  if (outcome === 'won' && state.encounterId) state.clearedEncounters.push(state.encounterId);
+  const events: AnyEvent[] = [{ type: 'combatFinished', outcome }];
+  if (outcome === 'won' && state.encounterId) {
+    state.clearedEncounters.push(state.encounterId);
+    // Only a won fight pays XP, since fleeing puts every enemy back.
+    const amount = combat.figures
+      .filter((f) => f.faction === 'enemy' && f.hp <= 0)
+      .reduce((sum, f) => sum + (world.enemies.find((e) => e.id === f.defId)?.xp ?? 0), 0);
+    if (amount > 0) {
+      c.xp += amount;
+      events.push({ type: 'xpGained', amount, xp: c.xp, levelsEarned: pendingLevelUps(c, world) });
+    }
+  }
   c.collection.push(...state.pendingLoot);
   state.pendingLoot = [];
   state.mode = outcome === 'lost' ? 'dead' : 'explore';
   state.combat = null;
   state.encounterId = null;
-  return { state, events: [{ type: 'combatFinished', outcome }] };
+  return { state, events };
 }

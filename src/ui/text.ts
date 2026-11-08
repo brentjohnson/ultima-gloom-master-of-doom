@@ -1,4 +1,4 @@
-import type { Effect, GameEvent, Modifier } from '../engine';
+import type { BasicDef, BasicId, BasicUpgrade, Effect, GameEvent, Modifier, Pool } from '../engine';
 
 export function describeEffect(effect: Effect): string {
   switch (effect.kind) {
@@ -18,6 +18,18 @@ export function describeEffect(effect: Effect): string {
       return parts.join(', ');
     }
   }
+}
+
+export const POOL_NAMES: Record<Pool, string> = { hp: 'Health', stamina: 'Stamina', mana: 'Mana' };
+
+/** For example "Spark: range 3 to 4", using the actions as they are before the upgrade. */
+export function describeUpgrade(upgrade: BasicUpgrade, basics: Record<BasicId, BasicDef>, initiativeStep: number): string {
+  const def = basics[upgrade.basic];
+  if (upgrade.kind === 'initiative') {
+    return `${def.name}: initiative ${def.initiative} to ${Math.max(1, def.initiative - initiativeStep)}`;
+  }
+  const value = (def.effects[upgrade.effectIndex] as unknown as Record<string, number> | undefined)?.[upgrade.stat] ?? 0;
+  return `${def.name}: ${upgrade.stat} ${value} to ${value + 1}`;
 }
 
 function modifierText(modifier: Modifier): string {

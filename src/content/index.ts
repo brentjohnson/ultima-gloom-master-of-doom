@@ -2,12 +2,13 @@ import { DEFAULT_WORLD_RULES, parseArena } from '../engine';
 import type { GameState, LevelDef, StartingCharacter, WorldDef } from '../engine';
 import { newGame, startEncounter } from '../engine';
 import { loadLdtkProject } from './ldtk';
-import { loadAffixes, loadBasics, loadCards, loadEnemies, loadLoot } from './schemas';
+import { loadAffixes, loadBasics, loadCards, loadEnemies, loadLevels, loadLoot } from './schemas';
 import { validateWorld } from './validateWorld';
 import rawAffixes from './affixes.json';
 import rawBasics from './basics.json';
 import rawCards from './cards.json';
 import rawEnemies from './enemies.json';
+import rawLevels from './levels.json';
 import rawLoot from './loot.json';
 import rawStarter from './starter.json';
 import rawWorld from '../../maps/world.ldtk?raw';
@@ -17,6 +18,7 @@ export const ENEMIES = loadEnemies(rawEnemies);
 export const BASICS = loadBasics(rawBasics);
 export const AFFIXES = loadAffixes(rawAffixes);
 export const LOOT = loadLoot(rawLoot, CARDS);
+export const LEVELS = loadLevels(rawLevels);
 
 export const ENEMY_KEYS: Record<string, string> = { s: 'mire-skulker', a: 'hollow-archer' };
 
@@ -33,7 +35,7 @@ const STARTING_CHARACTER: StartingCharacter = {
 
 function buildWorld(levels: WorldDef['levels'], start: WorldDef['start']): WorldDef {
   return {
-    levels, start, character: STARTING_CHARACTER, cards: CARDS, affixes: AFFIXES, loot: LOOT,
+    levels, start, character: STARTING_CHARACTER, cards: CARDS, affixes: AFFIXES, loot: LOOT, progression: LEVELS,
     enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
   };
 }

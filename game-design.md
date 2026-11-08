@@ -17,13 +17,14 @@
 
 No classes and no talent trees. Power comes from three places: the deck, level-ups and non-card gear.
 
-**Experience (Planned)**
-- Enemies give XP based on how dangerous they are.
-- Level thresholds rise, so farming an easy zone slows to a crawl.
+**Experience (Built)**
+- Each enemy type has its own XP value, set by how dangerous it is: Mire Skulker 4, Hollow Archer 5. Player level never changes it.
+- XP is paid when you win, for every enemy killed. Fleeing pays nothing, even after a kill, because the enemies all return.
+- Total XP needed for levels 2-9: 8, 20, 40, 70, 110, 160, 220, 300. The gaps keep growing, so farming an easy zone slows to a crawl. Level 9 is the cap for now.
 
-**Level-up (Planned).** Each level gives two choices:
-1. **Grow one pool:** health, stamina or mana. This is how a character leans toward fighting, spellcasting or a balance.
-2. **Upgrade one basic action:** any of them, with no limits for now.
+**Level-up (Built).** Each level gives two choices, made on a level-up screen before you can walk on:
+1. **Grow one pool:** health +4, stamina +4 or mana +3. The current value grows with the maximum. This is how a character leans toward fighting, spellcasting or a balance.
+2. **Upgrade one basic action:** +1 to any one of its numbers, or 10 faster initiative (never below 1). For example: Move range, Attack damage or range, Spark damage or range, Catch Breath stamina or mana. There are no other limits for now.
 
 Basic action upgrades do not affect cards. A card always does what it says.
 
@@ -44,7 +45,7 @@ Effects on a card are optional and resolve in the order printed.
 
 **Adjacency, movement and range (Built):** only the four orthogonal directions count. A diagonal square is at range 2, and all-adjacent attacks hit at most four enemies. See Open Questions.
 
-**Basic actions.** Always available and free, at initiative 90.
+**Basic actions.** Always available and free, at initiative 90 until upgraded.
 
 | Action | Effect | Status |
 |---|---|---|
@@ -168,14 +169,14 @@ All of this is built.
 
 **To settle in playtesting**
 - **Hidden enemy plans and modifier swing:** the first combat playtest was fine with both, but revisit them once real encounters exist.
-- **Regen rates and pool sizes**, including how much a level adds to a pool. With regen, stamina may be too plentiful within a single fight.
+- **XP values, level thresholds and pool growth.** The test map holds 17 XP in all, so it gives exactly one level.
+- **Upgrade balance:** Attack range +1 lets melee Attack hit from 2 squares away. Is that fine, or should some numbers be off limits?
+- **Regen rates and pool sizes.** With regen, stamina may be too plentiful within a single fight.
 - **Loot pace and power:** are drops frequent and strong enough to feel exciting, without Fabled cards flattening fixed zones? Should a found card offer to join the deck right away?
 - **Post-fight recovery:** does the 25% stamina recovery still earn its place now that walking regens stamina? If it stays, should it cover mana too?
 
 **To design later**
-- What each basic action upgrade actually improves. For example, does Move gain range, or Spark gain damage or range?
-- How much XP enemies give, and the level thresholds.
-- Whether a level cap is needed. With no upgrade limits, late levels could flatten fixed zones.
+- Whether level 9 is the right cap. With no upgrade limits, late levels could flatten fixed zones.
 - How many card schools exist (elemental, martial, utility) and how they interact.
 - Whether non-card gear rolls its own properties or stays simple.
 - Overworld scope: single continent or multiple regions.

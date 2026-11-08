@@ -3,11 +3,11 @@ import { applyAction, canPlayCard, createCombat, legalAttackTargets, legalMoveTa
 import type { Action, AttackEffect, CardDef, CombatState, EnemyDef, GameEvent, Modifier } from '../src/engine';
 
 export const dummy: EnemyDef = {
-  id: 'dummy', name: 'Dummy', hp: 10,
+  id: 'dummy', name: 'Dummy', hp: 10, xp: 1,
   behaviors: [{ name: 'Idle', initiative: 50, effects: [{ kind: 'shield', amount: 1 }] }],
 };
 export const biter: EnemyDef = {
-  id: 'biter', name: 'Biter', hp: 10,
+  id: 'biter', name: 'Biter', hp: 10, xp: 2,
   behaviors: [{ name: 'Bite', initiative: 10, effects: [{ kind: 'move', range: 3 }, { kind: 'attack', damage: 2, range: 1 }] }],
 };
 

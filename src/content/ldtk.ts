@@ -78,6 +78,7 @@ export function loadLdtkProject(raw: string): LoadedMaps {
       },
       exits: [],
       enemies: [],
+      zone: stringField(e, 'zone', id),
     }));
     const encounterAt = (e: Entity): EncounterDef => {
       const found = encounters.find((enc) => rectContains(enc.area, pos(e)));

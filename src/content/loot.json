@@ -1,0 +1,43 @@
+{
+  "affixCounts": {"common": 1, "rare": 2, "fabled": 3},
+  "tables": {
+    "wilds": {
+      "drops": 1,
+      "rarities": {"common": 80, "rare": 20, "fabled": 0},
+      "cards": [
+        {"id": "hasty-step", "weight": 3},
+        {"id": "guarded-stance", "weight": 3},
+        {"id": "hamstring", "weight": 3},
+        {"id": "shoulder-charge", "weight": 3},
+        {"id": "flung-stone", "weight": 3},
+        {"id": "field-salve", "weight": 3},
+        {"id": "frost-lance", "weight": 3}
+      ]
+    },
+    "crypt": {
+      "drops": 2,
+      "rarities": {"common": 35, "rare": 50, "fabled": 15},
+      "cards": [
+        {"id": "hasty-step", "weight": 3},
+        {"id": "guarded-stance", "weight": 3},
+        {"id": "hamstring", "weight": 3},
+        {"id": "shoulder-charge", "weight": 3},
+        {"id": "flung-stone", "weight": 3},
+        {"id": "cinder-dart", "weight": 3},
+        {"id": "wide-cleave", "weight": 3},
+        {"id": "ringing-blow", "weight": 3},
+        {"id": "heavy-swing", "weight": 3},
+        {"id": "field-salve", "weight": 3},
+        {"id": "slipstep", "weight": 3},
+        {"id": "daze", "weight": 3},
+        {"id": "frost-lance", "weight": 3},
+        {"id": "firebloom", "weight": 3},
+        {"id": "ward-strike", "weight": 4},
+        {"id": "running-cut", "weight": 4},
+        {"id": "thornburst", "weight": 4},
+        {"id": "mending-light", "weight": 4},
+        {"id": "gale-shove", "weight": 4}
+      ]
+    }
+  }
+}

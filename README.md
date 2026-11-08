@@ -4,12 +4,13 @@
 
 ## Status
 
-Early prototype, with no loot or saves yet, and the sprites and small test map are placeholders. So far you can:
+Early prototype, with no leveling or saves yet, and the sprites and small test map are placeholders. So far you can:
 
 - Walk a small overworld and a dark dungeon, with doors, traps and stairs
 - Fight in place when you enter enemy ground, and flee from marked exits
 - Commit one card or basic action each round, in initiative order
 - Spend stamina and mana on physical and spell cards, with an attack modifier deck, conditions, shields and pushes
+- Win cards with randomly rolled properties, then choose your deck from your collection
 
 ## Run it
 

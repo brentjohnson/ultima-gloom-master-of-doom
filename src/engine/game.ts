@@ -1,5 +1,7 @@
 import { applyAction, createCombat, DEFAULT_RULES, getPlayer, PLAYER_ID } from './combat';
 import { samePos, tileAt } from './grid';
+import { resolveCard, rollDrop } from './loot';
+import type { AffixDef, LootData, OwnedCard } from './loot';
 import { nextRandom } from './rng';
 import { IllegalActionError, TILE_PROPS } from './types';
 import type {
@@ -15,6 +17,8 @@ export interface EncounterDef {
   /** Tiles in the area that never trigger the fight and can be fled from. */
   exits: Pos[];
   enemies: { defId: string; pos: Pos }[];
+  /** Names the loot table for winning this fight. Without one, nothing drops. */
+  zone?: string;
 }
 
 export interface TransitionDef { tag: string; pos: Pos; targetLevel: string; targetTag: string }
@@ -37,25 +41,34 @@ export interface Character {
   maxStamina: number;
   mana: number;
   maxMana: number;
-  /** Card definition ids. */
+  /** Every card the character owns, whether in the deck or not. */
+  collection: OwnedCard[];
+  /** Uids from the collection. */
   deck: string[];
 }
+
+/** A new character. `deck` lists card definition ids, each of which becomes a plain owned copy. */
+export type StartingCharacter = Omit<Character, 'collection'>;
 
 export interface WorldRules {
   /** Walking this many steps regenerates the amounts below. */
   stepsPerRegen: number;
   walkRegenStamina: number;
   walkRegenMana: number;
+  minDeck: number;
+  maxDeck: number;
 }
 
-export const DEFAULT_WORLD_RULES: WorldRules = { stepsPerRegen: 4, walkRegenStamina: 1, walkRegenMana: 1 };
+export const DEFAULT_WORLD_RULES: WorldRules = { stepsPerRegen: 4, walkRegenStamina: 1, walkRegenMana: 1, minDeck: 10, maxDeck: 20 };
 
 /** Everything fixed about the world. Game state refers to it by id and is never copied from it. */
 export interface WorldDef {
   levels: Record<string, LevelDef>;
   start: { levelId: string; pos: Pos };
-  character: Character;
+  character: StartingCharacter;
   cards: Map<string, CardDef>;
+  affixes: Map<string, AffixDef>;
+  loot: LootData;
   enemies: EnemyDef[];
   basics: Record<BasicId, BasicDef>;
   rules: WorldRules;
@@ -70,6 +83,10 @@ export interface GameState {
   /** Tiles changed from their authored state, by level and tile index. */
   tileChanges: Record<string, Record<number, Tile>>;
   clearedEncounters: string[];
+  /** Used to give each owned card a unique id. */
+  nextCardNumber: number;
+  /** Rolled when a fight is won, and collected when the end-of-fight screen closes. */
+  pendingLoot: OwnedCard[];
   mode: 'explore' | 'combat' | 'dead';
   combat: CombatState | null;
   encounterId: string | null;
@@ -81,13 +98,17 @@ export type GameAction =
   | { type: 'step'; direction: Direction }
   | { type: 'combat'; action: Action }
   /** Leaves the end-of-fight screen and applies the result to the character. */
-  | { type: 'finishCombat' };
+  | { type: 'finishCombat' }
+  /** Deck editing, allowed whenever you aren't in a fight. */
+  | { type: 'addToDeck'; uid: string }
+  | { type: 'removeFromDeck'; uid: string };
 
 export type WorldEvent =
   | { type: 'stepped'; from: Pos; to: Pos }
   | { type: 'levelChanged'; levelId: string; pos: Pos }
   | { type: 'encounterStarted'; encounterId: string }
-  | { type: 'combatFinished'; outcome: Outcome };
+  | { type: 'combatFinished'; outcome: Outcome }
+  | { type: 'cardFound'; card: OwnedCard };
 
 export type AnyEvent = GameEvent | WorldEvent;
 export interface GameResult { state: GameState; events: AnyEvent[] }
@@ -100,14 +121,17 @@ export const rectContains = (r: Rect, p: Pos): boolean =>
   p.x >= r.x && p.y >= r.y && p.x < r.x + r.width && p.y < r.y + r.height;
 
 export function newGame(world: WorldDef, seed: number): GameState {
+  const collection: OwnedCard[] = world.character.deck.map((defId, i) => ({ uid: `card-${i}`, defId, rarity: 'plain', affixes: [] }));
   return {
     rng: seed | 0,
-    character: { ...world.character, deck: [...world.character.deck] },
+    character: { ...world.character, collection, deck: collection.map((card) => card.uid) },
     levelId: world.start.levelId,
     pos: { ...world.start.pos },
     steps: 0,
     tileChanges: {},
     clearedEncounters: [],
+    nextCardNumber: collection.length,
+    pendingLoot: [],
     mode: 'explore',
     combat: null,
     encounterId: null,
@@ -144,13 +168,57 @@ export function applyGameAction(previous: GameState, action: GameAction, world: 
     case 'combat': {
       if (previous.mode !== 'combat' || !previous.combat) throw new IllegalActionError('combat: no fight in progress');
       const result = applyAction(previous.combat, action.action);
-      return { state: { ...previous, combat: result.state }, events: result.events };
+      const events: AnyEvent[] = [...result.events];
+      const state = { ...previous, combat: result.state };
+      const justWon = result.state.phase.kind === 'ended' && result.state.phase.outcome === 'won' && previous.combat.phase.kind !== 'ended';
+      return { state: justWon ? rollLoot(state, world, events) : state, events };
     }
     case 'finishCombat':
       return finishCombat(previous, world);
     case 'step':
       return step(previous, action.direction, world);
+    case 'addToDeck':
+      return addToDeck(previous, action.uid, world);
+    case 'removeFromDeck':
+      return removeFromDeck(previous, action.uid, world);
   }
+}
+
+function rollLoot(previous: GameState, world: WorldDef, events: AnyEvent[]): GameState {
+  const zone = levelOf(previous, world).encounters.find((e) => e.id === previous.encounterId)?.zone;
+  if (!zone) return previous;
+  const table = world.loot.tables[zone];
+  if (!table) throw new Error(`No loot table for zone "${zone}"`);
+  let { rng, nextCardNumber } = previous;
+  const pendingLoot: OwnedCard[] = [];
+  for (let i = 0; i < table.drops; i++) {
+    const drop = rollDrop(table, world.loot, world.cards, world.affixes, `card-${nextCardNumber}`, rng);
+    rng = drop.rng;
+    nextCardNumber += 1;
+    pendingLoot.push(drop.card);
+    events.push({ type: 'cardFound', card: drop.card });
+  }
+  return { ...previous, rng, nextCardNumber, pendingLoot };
+}
+
+function editableCharacter(state: GameState): Character {
+  if (state.mode !== 'explore') throw new IllegalActionError('deck: can only be changed outside a fight');
+  return state.character;
+}
+
+function addToDeck(previous: GameState, uid: string, world: WorldDef): GameResult {
+  const c = editableCharacter(previous);
+  if (!c.collection.some((card) => card.uid === uid)) throw new IllegalActionError(`deck: you don't own ${uid}`);
+  if (c.deck.includes(uid)) throw new IllegalActionError(`deck: ${uid} is already in the deck`);
+  if (c.deck.length >= world.rules.maxDeck) throw new IllegalActionError('deck: already full');
+  return { state: { ...previous, character: { ...c, deck: [...c.deck, uid] } }, events: [] };
+}
+
+function removeFromDeck(previous: GameState, uid: string, world: WorldDef): GameResult {
+  const c = editableCharacter(previous);
+  if (!c.deck.includes(uid)) throw new IllegalActionError(`deck: ${uid} isn't in the deck`);
+  if (c.deck.length <= world.rules.minDeck) throw new IllegalActionError('deck: already at the minimum size');
+  return { state: { ...previous, character: { ...c, deck: c.deck.filter((id) => id !== uid) } }, events: [] };
 }
 
 function step(previous: GameState, direction: Direction, world: WorldDef): GameResult {
@@ -232,10 +300,10 @@ export function startEncounter(state: GameState, encounter: EncounterDef, world:
   state.rng = random.rng;
 
   const c = state.character;
-  const deck = c.deck.map((id) => {
-    const card = world.cards.get(id);
-    if (!card) throw new Error(`Unknown card "${id}"`);
-    return card;
+  const deck = c.deck.map((uid) => {
+    const owned = c.collection.find((card) => card.uid === uid);
+    if (!owned) throw new Error(`The deck holds "${uid}", which isn't in the collection`);
+    return resolveCard(owned, world.cards, world.affixes);
   });
   const created = createCombat({
     seed: Math.floor(random.value * 2 ** 31),
@@ -279,6 +347,8 @@ function finishCombat(previous: GameState, world: WorldDef): GameResult {
   });
 
   if (outcome === 'won' && state.encounterId) state.clearedEncounters.push(state.encounterId);
+  c.collection.push(...state.pendingLoot);
+  state.pendingLoot = [];
   state.mode = outcome === 'lost' ? 'dead' : 'explore';
   state.combat = null;
   state.encounterId = null;

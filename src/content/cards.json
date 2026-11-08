@@ -12,5 +12,10 @@
   {"id": "slipstep", "name": "Slipstep", "initiative": 6, "cost": 2, "costType": "mana", "effects": [{"kind": "blink", "range": 4}]},
   {"id": "daze", "name": "Daze", "initiative": 15, "cost": 3, "costType": "mana", "effects": [{"kind": "attack", "damage": 1, "range": 5, "conditions": ["stun"]}]},
   {"id": "frost-lance", "name": "Frost Lance", "initiative": 30, "cost": 2, "costType": "mana", "effects": [{"kind": "attack", "damage": 2, "range": 5, "conditions": ["root"]}]},
-  {"id": "firebloom", "name": "Firebloom", "initiative": 45, "cost": 3, "costType": "mana", "effects": [{"kind": "attack", "damage": 3, "range": 4, "blast": 1}]}
+  {"id": "firebloom", "name": "Firebloom", "initiative": 45, "cost": 3, "costType": "mana", "effects": [{"kind": "attack", "damage": 3, "range": 4, "blast": 1}]},
+  {"id": "ward-strike", "name": "Ward Strike", "initiative": 28, "cost": 2, "costType": "stamina", "effects": [{"kind": "shield", "amount": 2}, {"kind": "attack", "damage": 3, "range": 1}]},
+  {"id": "running-cut", "name": "Running Cut", "initiative": 38, "cost": 3, "costType": "stamina", "effects": [{"kind": "move", "range": 3}, {"kind": "attack", "damage": 3, "range": 1}]},
+  {"id": "thornburst", "name": "Thornburst", "initiative": 33, "cost": 3, "costType": "mana", "effects": [{"kind": "attack", "damage": 2, "range": 1, "allAdjacent": true, "conditions": ["bleed"]}]},
+  {"id": "mending-light", "name": "Mending Light", "initiative": 55, "cost": 3, "costType": "mana", "effects": [{"kind": "heal", "amount": 7}]},
+  {"id": "gale-shove", "name": "Gale Shove", "initiative": 22, "cost": 2, "costType": "mana", "effects": [{"kind": "attack", "damage": 1, "range": 4, "push": 3}]}
 ]

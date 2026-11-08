@@ -1,30 +1,39 @@
 import { DEFAULT_WORLD_RULES, parseArena } from '../engine';
-import type { Character, GameState, LevelDef, WorldDef } from '../engine';
+import type { GameState, LevelDef, StartingCharacter, WorldDef } from '../engine';
 import { newGame, startEncounter } from '../engine';
 import { loadLdtkProject } from './ldtk';
-import { loadBasics, loadCards, loadEnemies } from './schemas';
+import { loadAffixes, loadBasics, loadCards, loadEnemies, loadLoot } from './schemas';
 import { validateWorld } from './validateWorld';
+import rawAffixes from './affixes.json';
 import rawBasics from './basics.json';
 import rawCards from './cards.json';
 import rawEnemies from './enemies.json';
+import rawLoot from './loot.json';
+import rawStarter from './starter.json';
 import rawWorld from '../../maps/world.ldtk?raw';
 
 export const CARDS = loadCards(rawCards);
 export const ENEMIES = loadEnemies(rawEnemies);
 export const BASICS = loadBasics(rawBasics);
+export const AFFIXES = loadAffixes(rawAffixes);
+export const LOOT = loadLoot(rawLoot, CARDS);
 
 export const ENEMY_KEYS: Record<string, string> = { s: 'mire-skulker', a: 'hollow-archer' };
 
-export const STARTER_DECK = [...CARDS.values()];
+export const STARTER_DECK = rawStarter.map((id) => {
+  const card = CARDS.get(id);
+  if (!card) throw new Error(`The starter deck names unknown card "${id}"`);
+  return card;
+});
 
-const STARTING_CHARACTER: Character = {
+const STARTING_CHARACTER: StartingCharacter = {
   hp: 20, maxHp: 20, stamina: 20, maxStamina: 20, mana: 10, maxMana: 10,
   deck: STARTER_DECK.map((c) => c.id),
 };
 
 function buildWorld(levels: WorldDef['levels'], start: WorldDef['start']): WorldDef {
   return {
-    levels, start, character: STARTING_CHARACTER, cards: CARDS,
+    levels, start, character: STARTING_CHARACTER, cards: CARDS, affixes: AFFIXES, loot: LOOT,
     enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
   };
 }
@@ -32,7 +41,7 @@ function buildWorld(levels: WorldDef['levels'], start: WorldDef['start']): World
 /** Throws with every problem listed, so a bad map fails loudly at startup and in tests. */
 export function loadWorld(raw: string): WorldDef {
   const { levels, start } = loadLdtkProject(raw);
-  const errors = validateWorld(levels, start, new Set(ENEMIES.keys()));
+  const errors = validateWorld(levels, start, new Set(ENEMIES.keys()), new Set(Object.keys(LOOT.tables)));
   if (errors.length > 0) throw new Error(`The map has problems:\n- ${errors.join('\n- ')}`);
   return buildWorld(levels, start);
 }

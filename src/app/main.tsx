@@ -19,8 +19,14 @@ const KEYS: Record<string, Direction> = {
 };
 
 window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const { deckOpen } = game.snapshot;
+  if (e.key === 'c' || (e.key === 'Escape' && deckOpen)) {
+    game.setDeckOpen(e.key === 'c' && !deckOpen);
+    return;
+  }
   const direction = KEYS[e.key];
-  if (!direction || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!direction) return;
   e.preventDefault();
   if (game.snapshot.state.mode === 'explore') game.step(direction);
 });

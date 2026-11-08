@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { BASICS, CARDS, ENEMIES, loadWorld, newTestFight, TEST_WORLD, WORLD } from '../src/content';
+import { AFFIXES, BASICS, CARDS, ENEMIES, loadWorld, LOOT, newTestFight, STARTER_DECK, TEST_WORLD, WORLD } from '../src/content';
 import { loadLdtkProject } from '../src/content/ldtk';
 import { validateWorld } from '../src/content/validateWorld';
 import { applyAction, applyGameAction, currentGrid, DEFAULT_WORLD_RULES, IllegalActionError, newGame, parseArena } from '../src/engine';
@@ -17,8 +17,8 @@ function makeWorld(rows: string[], encounters: LevelDef['encounters'] = [], dark
       },
     },
     start: { levelId: 'a', pos: layout.playerStart },
-    character: { hp: 20, maxHp: 20, stamina: 10, maxStamina: 20, mana: 5, maxMana: 10, deck: [...CARDS.keys()] },
-    cards: CARDS, enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
+    character: { hp: 20, maxHp: 20, stamina: 10, maxStamina: 20, mana: 5, maxMana: 10, deck: STARTER_DECK.map((c) => c.id) },
+    cards: CARDS, affixes: AFFIXES, loot: LOOT, enemies: [...ENEMIES.values()], basics: BASICS, rules: DEFAULT_WORLD_RULES,
   };
 }
 
@@ -256,11 +256,12 @@ describe('encounters', () => {
 
 describe('map validation', () => {
   const ids = new Set(['mire-skulker']);
+  const zones = new Set(['known']);
   const start = { levelId: 'a', pos: { x: 0, y: 1 } };
   const levelsOf = (rows: string[], encounters: LevelDef['encounters'] = []) => makeWorld(rows, encounters).levels;
 
   it('accepts a sound map', () => {
-    expect(validateWorld(levelsOf(OPEN_ROWS, [SKULKER_ENCOUNTER]), start, ids)).toEqual([]);
+    expect(validateWorld(levelsOf(OPEN_ROWS, [SKULKER_ENCOUNTER]), start, ids, zones)).toEqual([]);
   });
 
   it.each([
@@ -269,27 +270,28 @@ describe('map validation', () => {
     ['an unknown enemy', { ...SKULKER_ENCOUNTER, enemies: [{ defId: 'nope', pos: { x: 6, y: 1 } }] }, /unknown enemy/],
     ['an enemy on an exit', { ...SKULKER_ENCOUNTER, enemies: [{ defId: 'mire-skulker', pos: { x: 3, y: 1 } }] }, /on an exit/],
     ['an area off the level', { ...SKULKER_ENCOUNTER, area: { x: 3, y: 0, width: 9, height: 3 } }, /runs off/],
+    ['an unknown zone', { ...SKULKER_ENCOUNTER, zone: 'nowhere' }, /no loot table/],
     ['an area too big to show', { ...SKULKER_ENCOUNTER, area: { x: 0, y: 0, width: 15, height: 3 } }, /larger than/],
   ])('rejects %s', (_name, encounter, message) => {
-    expect(validateWorld(levelsOf(OPEN_ROWS, [encounter]), start, ids).join('\n')).toMatch(message);
+    expect(validateWorld(levelsOf(OPEN_ROWS, [encounter]), start, ids, zones).join('\n')).toMatch(message);
   });
 
   it('rejects overlapping encounters', () => {
     const levels = levelsOf(OPEN_ROWS, [SKULKER_ENCOUNTER, { ...SKULKER_ENCOUNTER, id: 'other' }]);
-    expect(validateWorld(levels, start, ids).join('\n')).toMatch(/overlaps/);
+    expect(validateWorld(levels, start, ids, zones).join('\n')).toMatch(/overlaps/);
   });
 
   it('rejects part of an area that has no way to an exit', () => {
     const rows = ['...#...', '@..#...', '...#...'];
     const encounter = { ...SKULKER_ENCOUNTER, area: { x: 0, y: 0, width: 7, height: 3 }, exits: [{ x: 0, y: 0 }] };
-    expect(validateWorld(levelsOf(rows, [encounter]), start, ids).join('\n')).toMatch(/no exit can be reached/);
+    expect(validateWorld(levelsOf(rows, [encounter]), start, ids, zones).join('\n')).toMatch(/no exit can be reached/);
   });
 
   it('rejects a broken transition and an unreachable level', () => {
     const levels = levelsOf(OPEN_ROWS);
     (levels.a as LevelDef).transitions = [{ tag: 't', pos: { x: 6, y: 0 }, targetLevel: 'gone', targetTag: 'x' }];
     levels.island = { ...(levels.a as LevelDef), id: 'island', transitions: [] };
-    const errors = validateWorld(levels, start, ids).join('\n');
+    const errors = validateWorld(levels, start, ids, zones).join('\n');
     expect(errors).toMatch(/targets missing/);
     expect(errors).toMatch(/island: can't be reached/);
   });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { BasicDef, BasicId, CardDef, EnemyDef, Effect } from '../engine';
+import type { AffixDef, AffixMod, BasicDef, BasicId, CardDef, EnemyDef, Effect, LootData } from '../engine';
 
 const condition = z.enum(['bleed', 'stun', 'root', 'weak']);
 
@@ -13,6 +13,7 @@ const effect: z.ZodType<Effect> = z.discriminatedUnion('kind', [
     blast: z.number().int().positive().optional(),
     push: z.number().int().positive().optional(),
     conditions: z.array(condition).optional(),
+    keepBetterModifier: z.boolean().optional(),
   }),
   z.strictObject({ kind: z.literal('heal'), amount: z.number().int().positive() }),
   z.strictObject({ kind: z.literal('shield'), amount: z.number().int().positive() }),
@@ -64,6 +65,57 @@ function uniqueById<T extends { id: string }>(kind: string, items: T[]): Map<str
 
 export function loadCards(raw: unknown): Map<string, CardDef> {
   return uniqueById('card', z.array(cardSchema).parse(raw));
+}
+
+const dropRarity = z.enum(['common', 'rare', 'fabled']);
+const delta = z.number().int();
+
+const affixMod: z.ZodType<AffixMod> = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('cost'), delta }),
+  z.strictObject({ kind: z.literal('initiative'), delta }),
+  z.strictObject({
+    kind: z.literal('boost'),
+    stat: z.enum(['damage', 'attackRange', 'blast', 'push', 'move', 'blink', 'heal', 'shield']),
+    delta: z.number().int().positive(),
+  }),
+  z.strictObject({ kind: z.literal('condition'), condition }),
+  z.strictObject({ kind: z.literal('keepBetterModifier') }),
+  z.strictObject({ kind: z.literal('addEffect'), effect }),
+]);
+
+const affixSchema: z.ZodType<AffixDef> = z.strictObject({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  group: z.string().min(1),
+  minRarity: dropRarity,
+  mods: z.array(affixMod).min(1),
+});
+
+export function loadAffixes(raw: unknown): Map<string, AffixDef> {
+  return uniqueById('affix', z.array(affixSchema).parse(raw));
+}
+
+const weight = z.number().nonnegative();
+
+const lootSchema: z.ZodType<LootData> = z.strictObject({
+  affixCounts: z.strictObject({ common: z.number().int().positive(), rare: z.number().int().positive(), fabled: z.number().int().positive() }),
+  tables: z.record(z.string(), z.strictObject({
+    drops: z.number().int().positive(),
+    rarities: z.strictObject({ common: weight, rare: weight, fabled: weight }),
+    cards: z.array(z.strictObject({ id: z.string().min(1), weight: z.number().positive() })).min(1),
+  })),
+});
+
+/** Throws with every problem listed, like a bad map does. */
+export function loadLoot(raw: unknown, cards: Map<string, CardDef>): LootData {
+  const loot = lootSchema.parse(raw);
+  const errors: string[] = [];
+  for (const [zone, table] of Object.entries(loot.tables)) {
+    if (table.rarities.common + table.rarities.rare + table.rarities.fabled <= 0) errors.push(`${zone}: every rarity has zero weight`);
+    for (const { id } of table.cards) if (!cards.has(id)) errors.push(`${zone}: unknown card "${id}"`);
+  }
+  if (errors.length > 0) throw new Error(`The loot tables have problems:\n- ${errors.join('\n- ')}`);
+  return loot;
 }
 
 export function loadEnemies(raw: unknown): Map<string, EnemyDef> {

@@ -34,6 +34,7 @@ export function validateWorld(
   levels: Record<string, LevelDef>,
   start: { levelId: string; pos: Pos },
   enemyIds: Set<string>,
+  zones: Set<string>,
 ): string[] {
   const errors: string[] = [];
   const startLevel = levels[start.levelId];
@@ -62,6 +63,7 @@ export function validateWorld(
       }
       if (encounter.enemies.length === 0) errors.push(`${name}: has no enemies`);
       if (encounter.exits.length === 0) errors.push(`${name}: has no exits`);
+      if (encounter.zone !== undefined && !zones.has(encounter.zone)) errors.push(`${name}: no loot table for zone "${encounter.zone}"`);
       for (const enemy of encounter.enemies) {
         if (!enemyIds.has(enemy.defId)) errors.push(`${name}: unknown enemy "${enemy.defId}"`);
         if (!walkable(level, enemy.pos)) errors.push(`${name}: an enemy stands on blocked terrain at (${enemy.pos.x},${enemy.pos.y})`);

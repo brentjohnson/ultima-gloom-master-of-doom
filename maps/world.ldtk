@@ -11,7 +11,7 @@
  "iid": "00000000-0000-4000-8000-000000000000",
  "jsonVersion": "1.5.3",
  "appBuildId": 473703,
- "nextUid": 16,
+ "nextUid": 17,
  "identifierStyle": "Free",
  "toc": [],
  "worldLayout": "Free",
@@ -230,11 +230,48 @@
     "limitBehavior": "MoveLastOne",
     "pivotX": 0,
     "pivotY": 0,
-    "fieldDefs": []
+    "fieldDefs": [
+     {
+      "identifier": "zone",
+      "__type": "String",
+      "uid": 5,
+      "type": "F_String",
+      "isArray": false,
+      "canBeNull": false,
+      "arrayMinLength": null,
+      "arrayMaxLength": null,
+      "editorDisplayMode": "NameAndValue",
+      "editorDisplayScale": 1,
+      "editorDisplayPos": "Above",
+      "editorLinkStyle": "StraightArrow",
+      "editorDisplayColor": null,
+      "editorAlwaysShow": false,
+      "editorShowInWorld": true,
+      "editorCutLongValues": true,
+      "editorTextSuffix": null,
+      "editorTextPrefix": null,
+      "useForSmartColor": false,
+      "exportToToc": false,
+      "searchable": false,
+      "min": null,
+      "max": null,
+      "regex": null,
+      "acceptFileTypes": null,
+      "defaultOverride": null,
+      "textLanguageMode": null,
+      "symmetricalRef": false,
+      "autoChainRef": true,
+      "allowOutOfLevelRef": true,
+      "allowedRefs": "OnlySame",
+      "allowedRefsEntityUid": null,
+      "allowedRefTags": [],
+      "tilesetUid": null
+     }
+    ]
    },
    {
     "identifier": "Enemy",
-    "uid": 5,
+    "uid": 6,
     "tags": [],
     "exportToToc": false,
     "allowOutOfBounds": false,
@@ -269,7 +306,7 @@
      {
       "identifier": "defId",
       "__type": "String",
-      "uid": 6,
+      "uid": 7,
       "type": "F_String",
       "isArray": false,
       "canBeNull": false,
@@ -306,7 +343,7 @@
    },
    {
     "identifier": "Exit",
-    "uid": 7,
+    "uid": 8,
     "tags": [],
     "exportToToc": false,
     "allowOutOfBounds": false,
@@ -341,7 +378,7 @@
    },
    {
     "identifier": "Transition",
-    "uid": 8,
+    "uid": 9,
     "tags": [],
     "exportToToc": false,
     "allowOutOfBounds": false,
@@ -375,42 +412,6 @@
     "fieldDefs": [
      {
       "identifier": "tag",
-      "__type": "String",
-      "uid": 9,
-      "type": "F_String",
-      "isArray": false,
-      "canBeNull": false,
-      "arrayMinLength": null,
-      "arrayMaxLength": null,
-      "editorDisplayMode": "NameAndValue",
-      "editorDisplayScale": 1,
-      "editorDisplayPos": "Above",
-      "editorLinkStyle": "StraightArrow",
-      "editorDisplayColor": null,
-      "editorAlwaysShow": false,
-      "editorShowInWorld": true,
-      "editorCutLongValues": true,
-      "editorTextSuffix": null,
-      "editorTextPrefix": null,
-      "useForSmartColor": false,
-      "exportToToc": false,
-      "searchable": false,
-      "min": null,
-      "max": null,
-      "regex": null,
-      "acceptFileTypes": null,
-      "defaultOverride": null,
-      "textLanguageMode": null,
-      "symmetricalRef": false,
-      "autoChainRef": true,
-      "allowOutOfLevelRef": true,
-      "allowedRefs": "OnlySame",
-      "allowedRefsEntityUid": null,
-      "allowedRefTags": [],
-      "tilesetUid": null
-     },
-     {
-      "identifier": "targetLevel",
       "__type": "String",
       "uid": 10,
       "type": "F_String",
@@ -446,9 +447,45 @@
       "tilesetUid": null
      },
      {
-      "identifier": "targetTag",
+      "identifier": "targetLevel",
       "__type": "String",
       "uid": 11,
+      "type": "F_String",
+      "isArray": false,
+      "canBeNull": false,
+      "arrayMinLength": null,
+      "arrayMaxLength": null,
+      "editorDisplayMode": "NameAndValue",
+      "editorDisplayScale": 1,
+      "editorDisplayPos": "Above",
+      "editorLinkStyle": "StraightArrow",
+      "editorDisplayColor": null,
+      "editorAlwaysShow": false,
+      "editorShowInWorld": true,
+      "editorCutLongValues": true,
+      "editorTextSuffix": null,
+      "editorTextPrefix": null,
+      "useForSmartColor": false,
+      "exportToToc": false,
+      "searchable": false,
+      "min": null,
+      "max": null,
+      "regex": null,
+      "acceptFileTypes": null,
+      "defaultOverride": null,
+      "textLanguageMode": null,
+      "symmetricalRef": false,
+      "autoChainRef": true,
+      "allowOutOfLevelRef": true,
+      "allowedRefs": "OnlySame",
+      "allowedRefsEntityUid": null,
+      "allowedRefTags": [],
+      "tilesetUid": null
+     },
+     {
+      "identifier": "targetTag",
+      "__type": "String",
+      "uid": 12,
       "type": "F_String",
       "isArray": false,
       "canBeNull": false,
@@ -491,7 +528,7 @@
    {
     "identifier": "name",
     "__type": "String",
-    "uid": 12,
+    "uid": 13,
     "type": "F_String",
     "isArray": false,
     "canBeNull": false,
@@ -527,7 +564,7 @@
    {
     "identifier": "dark",
     "__type": "Bool",
-    "uid": 13,
+    "uid": 14,
     "type": "F_Bool",
     "isArray": false,
     "canBeNull": false,
@@ -571,7 +608,7 @@
   {
    "identifier": "Wilds",
    "iid": "00000000-0000-4000-8000-000000000001",
-   "uid": 14,
+   "uid": 15,
    "worldX": 0,
    "worldY": 0,
    "worldDepth": 0,
@@ -594,7 +631,7 @@
      "__type": "String",
      "__value": "The Wilds",
      "__tile": null,
-     "defUid": 12,
+     "defUid": 13,
      "realEditorValues": [
       {
        "id": "V_String",
@@ -609,7 +646,7 @@
      "__type": "Bool",
      "__value": false,
      "__tile": null,
-     "defUid": 13,
+     "defUid": 14,
      "realEditorValues": [
       {
        "id": "V_Bool",
@@ -633,7 +670,7 @@
      "__tilesetDefUid": null,
      "__tilesetRelPath": null,
      "iid": "00000000-0000-4000-8000-000000000008",
-     "levelId": 14,
+     "levelId": 15,
      "layerDefUid": 1,
      "pxOffsetX": 0,
      "pxOffsetY": 0,
@@ -692,7 +729,23 @@
         336,
         160
        ],
-       "fieldInstances": []
+       "fieldInstances": [
+        {
+         "__identifier": "zone",
+         "__type": "String",
+         "__value": "wilds",
+         "__tile": null,
+         "defUid": 5,
+         "realEditorValues": [
+          {
+           "id": "V_String",
+           "params": [
+            "wilds"
+           ]
+          }
+         ]
+        }
+       ]
       },
       {
        "__identifier": "Enemy",
@@ -712,7 +765,7 @@
        "iid": "00000000-0000-4000-8000-000000000004",
        "width": 16,
        "height": 16,
-       "defUid": 5,
+       "defUid": 6,
        "px": [
         400,
         192
@@ -723,7 +776,7 @@
          "__type": "String",
          "__value": "mire-skulker",
          "__tile": null,
-         "defUid": 6,
+         "defUid": 7,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -753,7 +806,7 @@
        "iid": "00000000-0000-4000-8000-000000000005",
        "width": 16,
        "height": 16,
-       "defUid": 7,
+       "defUid": 8,
        "px": [
         336,
         192
@@ -778,7 +831,7 @@
        "iid": "00000000-0000-4000-8000-000000000006",
        "width": 16,
        "height": 16,
-       "defUid": 7,
+       "defUid": 8,
        "px": [
         448,
         192
@@ -803,7 +856,7 @@
        "iid": "00000000-0000-4000-8000-000000000007",
        "width": 16,
        "height": 16,
-       "defUid": 8,
+       "defUid": 9,
        "px": [
         528,
         80
@@ -814,7 +867,7 @@
          "__type": "String",
          "__value": "ruin-down",
          "__tile": null,
-         "defUid": 9,
+         "defUid": 10,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -829,7 +882,7 @@
          "__type": "String",
          "__value": "Crypt",
          "__tile": null,
-         "defUid": 10,
+         "defUid": 11,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -844,7 +897,7 @@
          "__type": "String",
          "__value": "ruin-up",
          "__tile": null,
-         "defUid": 11,
+         "defUid": 12,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -871,7 +924,7 @@
      "__tilesetDefUid": null,
      "__tilesetRelPath": null,
      "iid": "00000000-0000-4000-8000-000000000009",
-     "levelId": 14,
+     "levelId": 15,
      "layerDefUid": 2,
      "pxOffsetX": 0,
      "pxOffsetY": 0,
@@ -1850,7 +1903,7 @@
   {
    "identifier": "Crypt",
    "iid": "00000000-0000-4000-8000-000000000010",
-   "uid": 15,
+   "uid": 16,
    "worldX": 704,
    "worldY": 0,
    "worldDepth": 0,
@@ -1873,7 +1926,7 @@
      "__type": "String",
      "__value": "The Sunken Crypt",
      "__tile": null,
-     "defUid": 12,
+     "defUid": 13,
      "realEditorValues": [
       {
        "id": "V_String",
@@ -1888,7 +1941,7 @@
      "__type": "Bool",
      "__value": true,
      "__tile": null,
-     "defUid": 13,
+     "defUid": 14,
      "realEditorValues": [
       {
        "id": "V_Bool",
@@ -1912,7 +1965,7 @@
      "__tilesetDefUid": null,
      "__tilesetRelPath": null,
      "iid": "00000000-0000-4000-8000-000000000018",
-     "levelId": 15,
+     "levelId": 16,
      "layerDefUid": 1,
      "pxOffsetX": 0,
      "pxOffsetY": 0,
@@ -1941,7 +1994,7 @@
        "iid": "00000000-0000-4000-8000-000000000011",
        "width": 16,
        "height": 16,
-       "defUid": 8,
+       "defUid": 9,
        "px": [
         48,
         48
@@ -1952,7 +2005,7 @@
          "__type": "String",
          "__value": "ruin-up",
          "__tile": null,
-         "defUid": 9,
+         "defUid": 10,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -1967,7 +2020,7 @@
          "__type": "String",
          "__value": "Wilds",
          "__tile": null,
-         "defUid": 10,
+         "defUid": 11,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -1982,7 +2035,7 @@
          "__type": "String",
          "__value": "ruin-down",
          "__tile": null,
-         "defUid": 11,
+         "defUid": 12,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -2017,7 +2070,23 @@
         192,
         16
        ],
-       "fieldInstances": []
+       "fieldInstances": [
+        {
+         "__identifier": "zone",
+         "__type": "String",
+         "__value": "crypt",
+         "__tile": null,
+         "defUid": 5,
+         "realEditorValues": [
+          {
+           "id": "V_String",
+           "params": [
+            "crypt"
+           ]
+          }
+         ]
+        }
+       ]
       },
       {
        "__identifier": "Enemy",
@@ -2037,7 +2106,7 @@
        "iid": "00000000-0000-4000-8000-000000000013",
        "width": 16,
        "height": 16,
-       "defUid": 5,
+       "defUid": 6,
        "px": [
         272,
         48
@@ -2048,7 +2117,7 @@
          "__type": "String",
          "__value": "mire-skulker",
          "__tile": null,
-         "defUid": 6,
+         "defUid": 7,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -2078,7 +2147,7 @@
        "iid": "00000000-0000-4000-8000-000000000014",
        "width": 16,
        "height": 16,
-       "defUid": 5,
+       "defUid": 6,
        "px": [
         288,
         112
@@ -2089,7 +2158,7 @@
          "__type": "String",
          "__value": "mire-skulker",
          "__tile": null,
-         "defUid": 6,
+         "defUid": 7,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -2119,7 +2188,7 @@
        "iid": "00000000-0000-4000-8000-000000000015",
        "width": 16,
        "height": 16,
-       "defUid": 5,
+       "defUid": 6,
        "px": [
         320,
         80
@@ -2130,7 +2199,7 @@
          "__type": "String",
          "__value": "hollow-archer",
          "__tile": null,
-         "defUid": 6,
+         "defUid": 7,
          "realEditorValues": [
           {
            "id": "V_String",
@@ -2160,7 +2229,7 @@
        "iid": "00000000-0000-4000-8000-000000000016",
        "width": 16,
        "height": 16,
-       "defUid": 7,
+       "defUid": 8,
        "px": [
         192,
         64
@@ -2185,7 +2254,7 @@
        "iid": "00000000-0000-4000-8000-000000000017",
        "width": 16,
        "height": 16,
-       "defUid": 7,
+       "defUid": 8,
        "px": [
         256,
         144
@@ -2207,7 +2276,7 @@
      "__tilesetDefUid": null,
      "__tilesetRelPath": null,
      "iid": "00000000-0000-4000-8000-000000000019",
-     "levelId": 15,
+     "levelId": 16,
      "layerDefUid": 2,
      "pxOffsetX": 0,
      "pxOffsetY": 0,

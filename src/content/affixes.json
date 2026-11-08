@@ -1,0 +1,20 @@
+[
+  {"id": "keen", "name": "Keen", "group": "damage", "minRarity": "common", "mods": [{"kind": "boost", "stat": "damage", "delta": 1}]},
+  {"id": "swift", "name": "Swift", "group": "initiative", "minRarity": "common", "mods": [{"kind": "initiative", "delta": -10}]},
+  {"id": "thrifty", "name": "Thrifty", "group": "cost", "minRarity": "common", "mods": [{"kind": "cost", "delta": -1}]},
+  {"id": "far-reaching", "name": "Far-Reaching", "group": "range", "minRarity": "common", "mods": [{"kind": "boost", "stat": "attackRange", "delta": 1}]},
+  {"id": "fleet", "name": "Fleet", "group": "movement", "minRarity": "common", "mods": [{"kind": "boost", "stat": "move", "delta": 1}]},
+  {"id": "farstepping", "name": "Farstepping", "group": "movement", "minRarity": "common", "mods": [{"kind": "boost", "stat": "blink", "delta": 1}]},
+  {"id": "stalwart", "name": "Stalwart", "group": "shield", "minRarity": "common", "mods": [{"kind": "boost", "stat": "shield", "delta": 1}]},
+  {"id": "soothing", "name": "Soothing", "group": "heal", "minRarity": "common", "mods": [{"kind": "boost", "stat": "heal", "delta": 2}]},
+  {"id": "brutal", "name": "Brutal", "group": "damage", "minRarity": "rare", "mods": [{"kind": "boost", "stat": "damage", "delta": 2}]},
+  {"id": "spreading", "name": "Spreading", "group": "blast", "minRarity": "rare", "mods": [{"kind": "boost", "stat": "blast", "delta": 1}]},
+  {"id": "driving", "name": "Driving", "group": "push", "minRarity": "rare", "mods": [{"kind": "boost", "stat": "push", "delta": 1}]},
+  {"id": "barbed", "name": "Barbed", "group": "condition", "minRarity": "rare", "mods": [{"kind": "condition", "condition": "bleed"}]},
+  {"id": "binding", "name": "Binding", "group": "condition", "minRarity": "rare", "mods": [{"kind": "condition", "condition": "root"}]},
+  {"id": "sapping", "name": "Sapping", "group": "condition", "minRarity": "rare", "mods": [{"kind": "condition", "condition": "weak"}]},
+  {"id": "stunning", "name": "Stunning", "group": "condition", "minRarity": "fabled", "mods": [{"kind": "condition", "condition": "stun"}]},
+  {"id": "fated", "name": "Fated", "group": "modifier", "minRarity": "fabled", "mods": [{"kind": "keepBetterModifier"}]},
+  {"id": "warding", "name": "Warding", "group": "extra", "minRarity": "fabled", "mods": [{"kind": "addEffect", "effect": {"kind": "shield", "amount": 2}}]},
+  {"id": "elusive", "name": "Elusive", "group": "extra", "minRarity": "fabled", "mods": [{"kind": "addEffect", "effect": {"kind": "move", "range": 2}}]}
+]

@@ -476,11 +476,23 @@ function reshuffle(state: CombatState, faction: Faction): void {
   state.rng = shuffleInPlace(deck.draw, state.rng);
 }
 
+function modifierTotal(base: number, modifier: Modifier): number {
+  if (modifier.kind === 'null') return 0;
+  return modifier.kind === 'double' ? base * 2 : Math.max(0, base + modifier.value);
+}
+
 function resolveAttack(state: CombatState, attacker: Figure, target: Figure, effect: AttackEffect, events: GameEvent[]): void {
   const base = Math.max(0, effect.damage - (attacker.conditions.includes('weak') ? 1 : 0));
-  const modifier = drawModifier(state, attacker.faction);
-  const total = modifier.kind === 'null' ? 0 : modifier.kind === 'double' ? base * 2 : Math.max(0, base + modifier.value);
-  events.push({ type: 'attacked', attackerId: attacker.id, targetId: target.id, base, modifier, total });
+  let modifier = drawModifier(state, attacker.faction);
+  let discarded: Modifier | undefined;
+  if (effect.keepBetterModifier) {
+    discarded = drawModifier(state, attacker.faction);
+    const secondWins = modifierTotal(base, discarded) > modifierTotal(base, modifier)
+      || (modifierTotal(base, discarded) === modifierTotal(base, modifier) && modifier.kind === 'null');
+    if (secondWins) [modifier, discarded] = [discarded, modifier];
+  }
+  const total = modifierTotal(base, modifier);
+  events.push({ type: 'attacked', attackerId: attacker.id, targetId: target.id, base, modifier, total, ...(discarded && { discarded }) });
 
   applyDamage(target, total, 'attack', events, false);
   if (modifier.kind !== 'null' && target.hp > 0) {

@@ -2,7 +2,7 @@
 
 *This document says how the game works. For what it is and why, see [game-pitch.md](game-pitch.md). It changes often, and all numbers are starting values to tune in playtesting.*
 
-**Status labels:** **Built** means it's in the current test fight. **Planned** means it's decided but not built yet.
+**Status labels:** **Built** means it's in the game now. **Planned** means it's decided but not built yet.
 
 ---
 
@@ -109,21 +109,37 @@ All of this is built.
 
 ## Cards
 
-**Physical cards (Built):** each has its own printed initiative, stamina cost and effects. Decks hold 10-20 cards, and the test deck has 14.
+**Physical cards (Built):** each has its own printed initiative, stamina cost and effects.
+
+**Decks (Built)**
+- A deck holds 10-20 cards. Every card you own is in your collection, and the deck is whichever of them you've chosen.
+- You can change the deck at any time outside a fight (press C).
+- You start with 14 plain cards, which have no rolled properties. Found cards go to the collection, not straight into the deck.
 
 **Spell cards**
 - They cost mana instead of stamina (Built).
 - They do things physical cards can't. Built: area blasts, long range and blink movement. Planned: elemental damage and barriers on the map.
 - **Blast:** also hits enemies near the target, if the target has line of sight to them.
 - **Blink:** teleports to a tile within range and in sight. It crosses water and figures, works while rooted, and still springs a trap you land on.
-- The test deck has 4 spells: Slipstep, Daze, Frost Lance and Firebloom.
+- The starting deck has 4 spells: Slipstep, Daze, Frost Lance and Firebloom.
 
-**Rolled properties (Planned)**
-- Cards drop with bonus properties, rolled once at drop time, so two copies are rarely identical.
-- Examples: +1 range, -1 cost, bleeds on hit. A few may interact with the modifier deck, such as "draw two modifiers and keep the better".
-- Properties must be stable effects, not chances, because the modifier deck is the only randomness in combat.
-- Rarity tiers set the size and strangeness of the bonus.
-- Loot tables belong to zones, and player level is never an input, so better drops come from more dangerous places.
+**Rolled properties (Built)**
+- Cards drop with bonus properties (affixes), rolled once at drop time, so two copies are rarely identical.
+- Properties are stable effects, not chances, because the modifier deck is the only randomness in combat.
+- A card can hold only one affix from each group, and only gets affixes that would change it.
+
+| Rarity | Affixes | Examples of what it can roll |
+|---|---|---|
+| Common | 1 | Keen (+1 damage), Swift (-10 initiative), Thrifty (-1 cost), Far-Reaching (+1 range) |
+| Rare | 2 | Also Brutal (+2 damage), Barbed (bleeds on hit), Binding (roots on hit) |
+| Fabled | 3 | Also Stunning (stuns on hit), Fated (draw two modifiers, keep the better), Warding (also shield 2) |
+
+**Drops (Built)**
+- Winning a fight drops cards, shown on the victory screen. Fleeing drops nothing.
+- Each encounter names a zone, and each zone has its own loot table: how many cards it drops, the odds of each rarity and which cards it can give.
+- Player level is never an input, so better drops come from more dangerous places.
+- The Wilds drop 1 card with no Fabled chance. The Crypt drops 2 with far better odds, and it's the only place to find the 5 cards outside the starting deck.
+- Treasure chests are not built yet.
 
 **Non-card gear (Planned, outside the slice):** weapons, armor and trinkets give baseline stats and flavor. The build-defining randomness stays in the cards.
 
@@ -153,6 +169,7 @@ All of this is built.
 **To settle in playtesting**
 - **Hidden enemy plans and modifier swing:** the first combat playtest was fine with both, but revisit them once real encounters exist.
 - **Regen rates and pool sizes**, including how much a level adds to a pool. With regen, stamina may be too plentiful within a single fight.
+- **Loot pace and power:** are drops frequent and strong enough to feel exciting, without Fabled cards flattening fixed zones? Should a found card offer to join the deck right away?
 - **Post-fight recovery:** does the 25% stamina recovery still earn its place now that walking regens stamina? If it stays, should it cover mana too?
 
 **To design later**

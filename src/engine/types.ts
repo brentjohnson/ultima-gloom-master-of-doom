@@ -36,6 +36,8 @@ export interface AttackEffect {
   blast?: number;
   push?: number;
   conditions?: Condition[];
+  /** Draws two attack modifiers and keeps the better one. */
+  keepBetterModifier?: boolean;
 }
 export interface HealEffect { kind: 'heal'; amount: number }
 export interface ShieldEffect { kind: 'shield'; amount: number }
@@ -53,6 +55,9 @@ export interface CardDef {
   cost: number;
   costType: ResourceKind;
   effects: Effect[];
+  /** Set on cards resolved from a drop. */
+  rarity?: 'plain' | 'common' | 'rare' | 'fabled';
+  affixNames?: string[];
 }
 
 export interface EnemyBehavior { name: string; initiative: number; effects: Effect[] }
@@ -159,7 +164,7 @@ export type GameEvent =
   | { type: 'moved'; figureId: string; path: Pos[] }
   | { type: 'pushed'; figureId: string; path: Pos[] }
   | { type: 'blinked'; figureId: string; path: Pos[] }
-  | { type: 'attacked'; attackerId: string; targetId: string; base: number; modifier: Modifier; total: number }
+  | { type: 'attacked'; attackerId: string; targetId: string; base: number; modifier: Modifier; total: number; discarded?: Modifier }
   | { type: 'damaged'; figureId: string; amount: number; blocked: number; hp: number; source: 'attack' | 'bleed' | 'trap' }
   | { type: 'trapSprung'; pos: Pos; figureId: string }
   | { type: 'doorOpened'; pos: Pos }

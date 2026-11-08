@@ -227,10 +227,38 @@ test('walks the world, wins a fight in place, and goes underground', async ({ pa
   }
   await expect(layout).toHaveAttribute('data-phase', 'ended');
   await expect(page.getByTestId('outcome')).toContainText('Victory');
+  await expect(page.getByTestId('loot').locator('.card')).toHaveCount(1);
+  await expect(page.getByTestId('log')).toContainText('You find');
+  await page.screenshot({ path: 'test-results/loot.png' });
   await page.getByRole('button', { name: 'Continue' }).click();
   await idle(page);
   await expect(layout).toHaveAttribute('data-mode', 'explore');
   await expect(page.locator('.card')).toHaveCount(0);
+
+  // The drop waits outside the deck until you move it in, and the deck screen pauses walking.
+  await page.keyboard.press('c');
+  const deckCards = page.getByTestId('deck-cards').locator('.card');
+  const spareCards = page.getByTestId('spare-cards').locator('.card');
+  await expect(deckCards).toHaveCount(14);
+  await expect(spareCards).toHaveCount(1);
+  await page.screenshot({ path: 'test-results/deck.png' });
+  const standing = await pos();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(50);
+  expect(await pos()).toEqual(standing);
+  await spareCards.first().click();
+  await expect(deckCards).toHaveCount(15);
+  await expect(spareCards).toHaveCount(0);
+  for (let i = 15; i > 10; i--) {
+    await deckCards.first().click();
+    await expect(deckCards).toHaveCount(i - 1);
+  }
+  await expect(deckCards.first()).toBeDisabled();
+  await spareCards.first().click();
+  await expect(deckCards).toHaveCount(11);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('deck-screen')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Deck (C)' })).toBeVisible();
 
   // The cleared ground is safe now, so walking it starts no fight.
   const here = await pos();

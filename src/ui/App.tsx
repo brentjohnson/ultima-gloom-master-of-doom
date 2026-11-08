@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { currentEffect, getPlayer, isOnExit, livingEnemies } from '../engine';
-import type { BasicId, CardInstance, CombatState, Figure } from '../engine';
+import type { BasicId, CardDef, CardInstance, CombatState, Figure, GameState, OwnedCard } from '../engine';
+import { RARITY_ORDER } from '../engine';
 import type { GameController } from '../app/game';
 import { describeEffect } from './text';
 
@@ -20,20 +21,83 @@ function Bar({ label, value, max, kind }: { label: string; value: number; max: n
   );
 }
 
-function CardView({ card, enabled, onPlay }: { card: CardInstance; enabled: boolean; onPlay: () => void }) {
+function CardFace({ card }: { card: CardDef }) {
+  const rarity = card.rarity ?? 'plain';
   return (
-    <button class={`card ${card.costType}`} disabled={!enabled} onClick={onPlay} data-card={card.id}>
+    <>
       <span class="card-top">
         <span class="init" title="Initiative: lowest acts first">{card.initiative}</span>
         <span class={`cost ${card.costType}`} title={`${card.costType === 'mana' ? 'Mana' : 'Stamina'} cost`}>
           {card.cost} {card.costType === 'mana' ? 'mana' : 'st'}
         </span>
       </span>
-      <span class="card-name">{card.name}</span>
+      <span class={`card-name ${rarity}`}>{card.name}</span>
+      {rarity !== 'plain' && <span class={`card-affixes ${rarity}`}>{rarity}: {card.affixNames?.join(', ')}</span>}
       <span class="card-text">
         {card.effects.map((e, i) => <span key={i}>{describeEffect(e)}</span>)}
       </span>
+    </>
+  );
+}
+
+function CardView({ card, enabled, onPlay, title }: { card: CardDef; enabled: boolean; onPlay: () => void; title?: string }) {
+  return (
+    <button class={`card ${card.costType}`} disabled={!enabled} onClick={onPlay} data-card={card.id} title={title}>
+      <CardFace card={card} />
     </button>
+  );
+}
+
+function LootList({ game, loot }: { game: GameController; loot: OwnedCard[] }) {
+  if (loot.length === 0) return null;
+  return (
+    <div class="loot" data-testid="loot">
+      {loot.map((owned) => <div class={`card ${game.resolve(owned).costType}`} key={owned.uid}><CardFace card={game.resolve(owned)} /></div>)}
+    </div>
+  );
+}
+
+/** Best cards first, then by name, so copies of a card sit together. */
+function sortCards(cards: OwnedCard[], game: GameController): { owned: OwnedCard; card: CardDef }[] {
+  return cards
+    .map((owned) => ({ owned, card: game.resolve(owned) }))
+    .sort((a, b) => RARITY_ORDER.indexOf(b.owned.rarity) - RARITY_ORDER.indexOf(a.owned.rarity) || a.card.name.localeCompare(b.card.name));
+}
+
+function DeckScreen({ game, state }: { game: GameController; state: GameState }) {
+  const { collection, deck } = state.character;
+  const { minDeck, maxDeck } = game.rules;
+  const inDeck = sortCards(collection.filter((c) => deck.includes(c.uid)), game);
+  const spare = sortCards(collection.filter((c) => !deck.includes(c.uid)), game);
+  const atMin = deck.length <= minDeck;
+  const atMax = deck.length >= maxDeck;
+  return (
+    <div class="deck-screen" data-testid="deck-screen">
+      <div class="deck-head">
+        <h1>Deck and collection</h1>
+        <span class="deck-rule">A deck holds {minDeck} to {maxDeck} cards. Click a card to move it.</span>
+        <button class="primary" onClick={() => game.setDeckOpen(false)}>Close (Esc)</button>
+      </div>
+      <h2>In your deck: {deck.length} of {maxDeck}{atMin ? ' (at the minimum, add a card to take one out)' : ''}</h2>
+      <div class="deck-grid" data-testid="deck-cards">
+        {inDeck.map(({ owned, card }) => (
+          <CardView
+            key={owned.uid} card={card} enabled={!atMin} title={atMin ? `A deck needs at least ${minDeck} cards` : 'Take out of the deck'}
+            onPlay={() => void game.dispatch({ type: 'removeFromDeck', uid: owned.uid })}
+          />
+        ))}
+      </div>
+      <h2>Not in your deck: {spare.length}{atMax && spare.length > 0 ? ' (the deck is full, take a card out first)' : ''}</h2>
+      {spare.length === 0 && <p class="hidden-intent">Cards you find or take out of your deck wait here.</p>}
+      <div class="deck-grid" data-testid="spare-cards">
+        {spare.map(({ owned, card }) => (
+          <CardView
+            key={owned.uid} card={card} enabled={!atMax} title={atMax ? `A deck holds at most ${maxDeck} cards` : 'Add to the deck'}
+            onPlay={() => void game.dispatch({ type: 'addToDeck', uid: owned.uid })}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -76,7 +140,7 @@ function EnemyRow({ enemy, state }: { enemy: Figure; state: CombatState }) {
 
 const OUTCOME_TEXT = { won: 'Victory!', lost: 'You have fallen.', fled: 'You escaped.' } as const;
 
-function OutcomeOverlay({ game, combat, seed }: { game: GameController; combat: CombatState; seed: number }) {
+function OutcomeOverlay({ game, combat, seed, loot }: { game: GameController; combat: CombatState; seed: number; loot: OwnedCard[] }) {
   if (combat.phase.kind !== 'ended') return null;
   const { outcome } = combat.phase;
   const player = getPlayer(combat);
@@ -88,6 +152,7 @@ function OutcomeOverlay({ game, combat, seed }: { game: GameController; combat: 
         Round {combat.round}: {player.hp}/{player.maxHp} HP, {combat.player.stamina}/{combat.player.maxStamina} stamina,
         {' '}{combat.player.mana}/{combat.player.maxMana} mana{outcome === 'won' ? ' (after recovery)' : ''}.
       </p>
+      <LootList game={game} loot={loot} />
       {game.testFight
         ? (
           <>
@@ -172,7 +237,7 @@ function CombatSidebar({ combat }: { combat: CombatState }) {
 }
 
 export function App({ game, mountArena }: { game: GameController; mountArena: (host: HTMLElement) => void }) {
-  const { state, busy, log, seed } = useSnapshot(game);
+  const { state, busy, log, seed, deckOpen } = useSnapshot(game);
   const arenaHost = useRef<HTMLDivElement>(null);
   const logEnd = useRef<HTMLDivElement>(null);
 
@@ -196,7 +261,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
       <div class="main-column">
         <div class="arena-wrap">
           <div ref={arenaHost} class="arena" data-testid="arena" />
-          {combat && !busy && <OutcomeOverlay game={game} combat={combat} seed={seed} />}
+          {combat && !busy && <OutcomeOverlay game={game} combat={combat} seed={seed} loot={state.pendingLoot} />}
           {state.mode === 'dead' && !busy && (
             <div class="overlay" data-testid="dead">
               <h2>You have fallen.</h2>
@@ -212,6 +277,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
               <p class="prompt" data-testid="prompt">
                 {state.mode === 'explore' ? 'Arrow keys or WASD to walk, or click a tile next to you. Enemies attack when you enter their ground.' : ''}
               </p>
+              {state.mode === 'explore' && <button disabled={busy} onClick={() => game.setDeckOpen(true)}>Deck (C)</button>}
             </div>
           )}
       </div>
@@ -226,7 +292,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
         <Bar label="Mana" value={mana} max={c.maxMana} kind="mana" />
         {combat
           ? <CombatSidebar combat={combat} />
-          : <div class="piles">Deck {c.deck.length} cards. Walking slowly restores stamina and mana.</div>}
+          : <div class="piles">Deck {c.deck.length} of {c.collection.length} cards owned. Walking slowly restores stamina and mana.</div>}
 
         <h2>Log</h2>
         <div class="log" data-testid="log">
@@ -234,6 +300,7 @@ export function App({ game, mountArena }: { game: GameController; mountArena: (h
           <div ref={logEnd} />
         </div>
       </aside>
+      {deckOpen && <DeckScreen game={game} state={state} />}
     </div>
   );
 }

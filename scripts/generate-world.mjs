@@ -61,7 +61,7 @@ const terrainLayerDef = {
 
 const entityDefs = {
   PlayerStart: entityDef('PlayerStart', '#F4E9C1', []),
-  Encounter: entityDef('Encounter', '#E0403F', [], true),
+  Encounter: entityDef('Encounter', '#E0403F', ['zone'], true),
   Enemy: entityDef('Enemy', '#9FCE5A', ['defId']),
   Exit: entityDef('Exit', '#7FD67F', []),
   Transition: entityDef('Transition', '#F2D94E', ['tag', 'targetLevel', 'targetTag']),
@@ -132,7 +132,7 @@ const levels = [
     },
     entities: () => [
       entity('PlayerStart', 4, 12),
-      entity('Encounter', 21, 10, {}, { width: 8, height: 6 }),
+      entity('Encounter', 21, 10, { zone: 'wilds' }, { width: 8, height: 6 }),
       entity('Enemy', 25, 12, { defId: 'mire-skulker' }),
       entity('Exit', 21, 12),
       entity('Exit', 28, 12),
@@ -155,7 +155,7 @@ const levels = [
     },
     entities: () => [
       entity('Transition', 3, 3, { tag: 'ruin-up', targetLevel: 'Wilds', targetTag: 'ruin-down' }),
-      entity('Encounter', 12, 1, {}, { width: 10, height: 9 }),
+      entity('Encounter', 12, 1, { zone: 'crypt' }, { width: 10, height: 9 }),
       entity('Enemy', 17, 3, { defId: 'mire-skulker' }),
       entity('Enemy', 18, 7, { defId: 'mire-skulker' }),
       entity('Enemy', 20, 5, { defId: 'hollow-archer' }),

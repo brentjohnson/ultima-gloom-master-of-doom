@@ -1,8 +1,8 @@
 import {
   applyGameAction, canPlayCard, currentEffect, currentGrid, getPlayer, IllegalActionError, legalAttackTargets,
-  legalMoveTargets, liveEncounters, newGame, PLAYER_ID, samePos,
+  legalMoveTargets, liveEncounters, newGame, PLAYER_ID, resolveCard, samePos,
 } from '../engine';
-import type { Action, AnyEvent, CombatState, Direction, GameAction, GameState, Pos, WorldDef } from '../engine';
+import type { Action, AnyEvent, CardDef, CombatState, Direction, GameAction, GameState, OwnedCard, Pos, WorldDef, WorldRules } from '../engine';
 import { newTestFight, TEST_WORLD, WORLD } from '../content';
 import type { FigureInfo, Scene, WorldView } from '../render/worldView';
 import type { SpriteName } from '../render/sprites';
@@ -15,6 +15,8 @@ export interface GameSnapshot {
   busy: boolean;
   log: string[];
   seed: number;
+  /** The deck builder covers the game while open. */
+  deckOpen: boolean;
 }
 
 /** Connects the pure engine to the view: one action in, one animated event list out. */
@@ -33,10 +35,10 @@ export class GameController {
   private freshSnapshot(seed: number): GameSnapshot {
     if (this.testFight) {
       const { state, events } = newTestFight(seed);
-      return { state, busy: false, log: this.lines(state, events), seed };
+      return { state, busy: false, log: this.lines(state, events), seed, deckOpen: false };
     }
     const state = newGame(this.world, seed);
-    return { state, busy: false, log: [`You set out into ${this.levelName(state)}.`], seed };
+    return { state, busy: false, log: [`You set out into ${this.levelName(state)}.`], seed, deckOpen: false };
   }
 
   private levelName(state: GameState): string {
@@ -60,7 +62,28 @@ export class GameController {
     if (event.type === 'encounterStarted') return 'Enemies close in!';
     if (event.type === 'doorOpened') return 'A door creaks open.';
     if (event.type === 'stepped' || event.type === 'combatFinished') return null;
+    if (event.type === 'cardFound') return `You find ${this.cardTitle(event.card)}.`;
     return logLine(event, (id) => this.nameOf(state, id));
+  }
+
+  /** What an owned card does right now, with its rolled properties applied. */
+  resolve(card: OwnedCard): CardDef {
+    return resolveCard(card, this.world.cards, this.world.affixes);
+  }
+
+  private cardTitle(card: OwnedCard): string {
+    const { name, affixNames } = this.resolve(card);
+    return affixNames?.length ? `${name} (${card.rarity}: ${affixNames.join(', ')})` : name;
+  }
+
+  get rules(): WorldRules {
+    return this.world.rules;
+  }
+
+  setDeckOpen(open: boolean): void {
+    const { state, busy } = this.snapshot;
+    if (open && (busy || state.mode !== 'explore')) return;
+    this.update({ deckOpen: open });
   }
 
   attach(view: WorldView): void {
@@ -104,6 +127,7 @@ export class GameController {
   }
 
   step(direction: Direction): void {
+    if (this.snapshot.deckOpen) return;
     void this.dispatch({ type: 'step', direction });
   }
 

@@ -14,6 +14,7 @@ export function describeEffect(effect: Effect): string {
       if (effect.blast) parts.push(`blast ${effect.blast}`);
       if (effect.push) parts.push(`push ${effect.push}`);
       for (const c of effect.conditions ?? []) parts.push(c);
+      if (effect.keepBetterModifier) parts.push('draw 2 modifiers, keep the better');
       return parts.join(', ');
     }
   }
@@ -35,7 +36,7 @@ export function logLine(event: GameEvent, nameOf: (id: string) => string): strin
     case 'committed': return `You commit ${event.name} (initiative ${event.initiative}).`;
     case 'revealed': return `${event.enemyName}: ${event.behavior} (initiative ${event.initiative}).`;
     case 'turnSkipped': return event.name === YOU ? 'You are stunned and lose the turn.' : `${event.name} is stunned and loses the turn.`;
-    case 'attacked': return `${subject(nameOf(event.attackerId), 'attack', 'attacks')} ${nameOf(event.targetId)}: ${event.base}, modifier ${modifierText(event.modifier)}, total ${event.total}.`;
+    case 'attacked': return `${subject(nameOf(event.attackerId), 'attack', 'attacks')} ${nameOf(event.targetId)}: ${event.base}, modifier ${modifierText(event.modifier)}${event.discarded ? ` (over ${modifierText(event.discarded)})` : ''}, total ${event.total}.`;
     case 'damaged':
       if (event.source === 'attack') return event.blocked > 0 ? `${subject(nameOf(event.figureId), 'block', 'blocks')} ${event.blocked} and take${nameOf(event.figureId) === YOU ? '' : 's'} ${event.amount}.` : null;
       return `${subject(nameOf(event.figureId), 'take', 'takes')} ${event.amount} from ${event.source}.`;
